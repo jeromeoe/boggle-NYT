@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
+@import "tailwindcss";
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Intellectual Play - Color Palette */
+  --background: #F9F7F1; /* Warm Cream/Parchment */
+  --foreground: #1A1A1A; /* Soft Black */
+  
+  --primary: #1A3C34; /* Deep Forest Green */
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #E6E4DD; /* Darker Cream for sub-elements */
+  --secondary-foreground: #2A2A2A;
+  
+  --accent: #D4AF37; /* Muted Gold/Brass */
+  --accent-foreground: #1A1A1A;
+  
+  --muted: #8A8A8A;
+  --muted-foreground: #666666;
+  
+  --border: #E6E4DD;
+  --input: #E6E4DD;
+  --ring: #1A3C34;
+
+  /* Status Colors */
+  --success: #2D6A4F;
+  --warning: #D4AF37;
+  --error: #9B2226;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
   --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-fraunces);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Dark Mode - "Midnight Library" */
+    --background: #0C1210; /* Very deep green/black */
+    --foreground: #E6E4DD; /* Parchment white */
+    
+    --primary: #2D4F46; /* Lighter Forest Green */
+    --primary-foreground: #FFFFFF;
+    
+    --secondary: #1A2623;
+    --secondary-foreground: #E6E4DD;
+    
+    --accent: #C5A028;
+    --accent-foreground: #000000;
+    
+    --muted: #4A5550;
+    --muted-foreground: #8A9A90;
+    
+    --border: #1A2623;
+    --input: #1A2623;
+    --ring: #2D4F46;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }

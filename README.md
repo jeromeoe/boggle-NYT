@@ -1,36 +1,163 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Boggle.WEB
 
-## Getting Started
+A premium word-finding game built with Next.js, TypeScript, and Supabase. Challenge yourself to find as many words as possible in 3 minutes on a 4x4 grid using the official Scrabble dictionary (CSW24). Check out the official webapp here:
+(Vercel Link)
 
-First, run the development server:
+![Boggle.WEB Screenshot](https://via.placeholder.com/800x400?text=Boggle+Screenshot)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🎯 Features
+
+- **Premium Design**: Elegant "Intellectual Play" aesthetic with cream/parchment colors and serif typography
+- **Prominent Scoring**: Hero-style score display with real-time visual feedback
+- **User Authentication**: Username/password system with persistent game history
+- **Smart Game Engine**: Trie-based solver with 280,000+ word CSW24 dictionary
+- **Fully Responsive**: Beautiful on desktop, tablet, and mobile
+- **Blazing Fast**: Optimized dictionary loading and instant word validation
+- **Coming Soon**: Daily challenges, leaderboards, and multiplayer mode
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- A Supabase account (free tier works fine but upping email rate limits through a provider is highly recommended)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/jeromeoe/boggle-NYT.git
+   cd boggle-NYT
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up Supabase**
+   
+   a. Create a new project at [supabase.com](https://supabase.com)
+   
+   b. Run the SQL migrations in order:
+      - Go to SQL Editor in Supabase dashboard
+      - Copy and execute `sql/01_users_schema.sql`
+      - Then `sql/02_rls_policies.sql`
+      - Finally `sql/03_functions.sql`
+
+4. **Configure environment variables**
+   ```bash
+   cp .env.local.example .env.local
+   ```
+   
+   Edit `.env.local` with your Supabase credentials:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   ```
+
+5. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open [http://localhost:3000](http://localhost:3000)**
+
+## 🎲 How to Play
+
+1. **Start a Game**: Click "Start New Game" to generate a random 4x4 board
+2. **Find Words**: Click tiles or type letters to form words (minimum 3 letters)
+3. **Submit**: Press Enter or click Submit
+4. **Score Points**: 
+   - Valid words = positive points (longer words = more points)
+   - Invalid words = -1 penalty
+   - Duplicates = ignored
+5. **Beat the Clock**: You have 3 minutes to find as many words as possible!
+
+### Scoring System
+
+| Word Length | Points |
+|------------|--------|
+| 3 letters  | 1      |
+| 4 letters  | 1      |
+| 5 letters  | 2      |
+| 6 letters  | 3      |
+| 7 letters  | 5      |
+| 8+ letters | 11     |
+
+**Penalties**: -1 point for words not in dictionary or not on the board
+
+## 🏗️ Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Framer Motion
+- **Database**: Supabase (PostgreSQL)
+- **Auth**: Custom username/password with bcrypt
+- **Dictionary**: CSW24 (280k+ words)
+
+## 📂 Project Structure
+
+```
+/src
+  /app                    # Next.js pages
+  /components
+    /game                 # Board, Tile, Timer, Controls
+    /analysis             # ResultsReport
+    /auth                 # AuthModal
+    /shared               # NoiseOverlay, utilities
+  /hooks                  # useGameLogic
+  /lib
+    /boggle               # Game logic (solver, scoring, dice)
+    /supabase             # Supabase client & auth
+/sql                      # Database schemas & migrations
+/public/data              # CSW24 dictionary JSON
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🎨 Design Philosophy
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This project follows the "Intellectual Play" design system:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Typography**: Fraunces (serif) for headers, Geist Sans for UI
+- **Colors**: Cream (#F9F7F1), Forest Green (#1A3C34), Gold (#D4AF37)
+- **Motion**: Subtle, physics-based animations
+- **Accessibility**: Full keyboard navigation and screen reader support
 
-## Learn More
+See `Agent.md` for complete design guidelines.
 
-To learn more about Next.js, take a look at the following resources:
+## 🔒 Security
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Row Level Security (RLS) enabled on all database tables
+- Passwords hashed with bcrypt (10 rounds)
+- Environment variables for sensitive credentials
+- Input validation on client and server
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📝 License
 
-## Deploy on Vercel
+MIT License - feel free to use this project for learning or building your own word game!
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🙏 Acknowledgments
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- CSW24 dictionary from [NASPA](https://www.scrabbleplayers.org/)
+- Inspired by NYT Games and classic Boggle
+- Built with ❤️ using [Next.js](https://nextjs.org/) and [Supabase](https://supabase.com/)
+
+## 🐛 Found a Bug?
+
+Please open an issue on GitHub with:
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots if applicable
+
+## 🚧 Roadmap
+
+- [ ] Daily Challenge mode (same board for all players)
+- [ ] Global leaderboards
+- [ ] Statistics dashboard
+- [ ] Social sharing
+- [ ] Multiplayer lobbies
+- [ ] Mobile app (React Native)
+
+---
+
+**Enjoy playing Boggle!** 🎉
