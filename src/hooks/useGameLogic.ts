@@ -26,6 +26,7 @@ export function useGameLogic() {
     const [showResults, setShowResults] = useState(false);
     const [gameWasManual, setGameWasManual] = useState(false);
     const [isDailyChallenge, setIsDailyChallenge] = useState(false);
+    const [isCustomBoardLoaded, setIsCustomBoardLoaded] = useState(false);
 
     // Timer ref
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -110,8 +111,23 @@ export function useGameLogic() {
         setTimeLeft(GAME_DURATION);
         setGameActive(true);
         setShowResults(false);
+        setIsDailyChallenge(false); // Reset daily challenge flag for regular games
+        setIsCustomBoardLoaded(false); // Reset custom board flag
         setStatusMessage(`${possible.size} words available`);
     }, [trie]);
+
+    const startCustomGame = useCallback(() => {
+        if (!trie || board.length === 0) return;
+
+        // Use the already loaded custom board
+        setFoundWords([]);
+        setPenalizedWords([]);
+        setTimeLeft(GAME_DURATION);
+        setGameActive(true);
+        setShowResults(false);
+        setIsDailyChallenge(false);
+        setStatusMessage(`${allPossibleWords.size} words available`);
+    }, [trie, board, allPossibleWords]);
 
     const loadCustomBoard = useCallback((input: string) => {
         const parsed = parseCustomBoard(input);
@@ -125,6 +141,8 @@ export function useGameLogic() {
             setPenalizedWords([]);
             setTimeLeft(GAME_DURATION);
             setGameActive(false);
+            setIsDailyChallenge(false);
+            setIsCustomBoardLoaded(true); // Mark that a custom board is loaded
             setStatusMessage("Custom board loaded. Press START to play.");
             return true;
         }
@@ -202,9 +220,11 @@ export function useGameLogic() {
         gameWasManual,
         allPossibleWords,
         isDailyChallenge,
+        isCustomBoardLoaded,
 
         // Actions
         startGame,
+        startCustomGame,
         startDailyChallenge,
         endGame,
         submitWord,

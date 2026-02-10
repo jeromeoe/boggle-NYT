@@ -34,9 +34,11 @@ export default function BogglePage() {
     gameWasManual,
     allPossibleWords,
     isDailyChallenge,
+    isCustomBoardLoaded,
 
     // Actions
     startGame,
+    startCustomGame,
     startDailyChallenge,
     endGame,
     submitWord,
@@ -270,7 +272,7 @@ export default function BogglePage() {
 
                 <GameControls
                   gameActive={gameActive}
-                  onStart={startGame}
+                  onStart={isCustomBoardLoaded ? startCustomGame : startGame}
                   onEnd={() => endGame(true)}
                   onCustomBoard={handleCustomBoard}
                 />
