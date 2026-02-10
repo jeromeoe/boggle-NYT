@@ -44,6 +44,7 @@ export interface LeaderboardEntry {
     id: string;
     user_id: string;
     challenge_date: string;
+    gross_score: number;
     net_score: number;
     rank: number;
     words_found: number;

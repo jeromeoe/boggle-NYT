@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS daily_leaderboard (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     challenge_date DATE,
+    gross_score INTEGER,
     net_score INTEGER,
     rank INTEGER,
     words_found INTEGER,

@@ -27,6 +27,7 @@ BEGIN
     INSERT INTO daily_leaderboard (
         user_id,
         challenge_date,
+        gross_score,
         net_score,
         words_found,
         completion_time_seconds
@@ -34,12 +35,14 @@ BEGIN
     VALUES (
         NEW.user_id,
         NEW.game_date,
+        NEW.gross_score,
         NEW.net_score,
         ARRAY_LENGTH(NEW.words_found, 1),
         NEW.duration_seconds
     )
     ON CONFLICT (user_id, challenge_date) 
     DO UPDATE SET
+        gross_score = EXCLUDED.gross_score,
         net_score = EXCLUDED.net_score,
         words_found = EXCLUDED.words_found,
         completion_time_seconds = EXCLUDED.completion_time_seconds

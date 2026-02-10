@@ -170,7 +170,9 @@ export function LeaderboardModal({ isOpen, onClose, userId }: LeaderboardModalPr
                                                     <div className="text-2xl font-bold text-[#1A3C34]">
                                                         {entry.net_score}
                                                     </div>
-                                                    <div className="text-xs text-[#8A8A8A]">Score</div>
+                                                    <div className="text-xs text-[#AAAAAA] font-light">
+                                                        {entry.gross_score} raw
+                                                    </div>
                                                 </div>
 
                                                 <div className="text-center hidden sm:block">
