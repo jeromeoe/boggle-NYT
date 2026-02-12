@@ -10,21 +10,29 @@ import { loadDictionary } from '@/lib/boggle/trie';
 export function PracticeMode() {
     const [trie, setTrie] = useState<any>(null);
     const [currentQuiz, setCurrentQuiz] = useState<PracticeQuiz | null>(null);
-    const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+    const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('medium');
 
     // Load dictionary on mount
     useEffect(() => {
+        let isMounted = true;
         loadDictionary().then(({ trie: loadedTrie }) => {
-            setTrie(loadedTrie);
+            if (isMounted) {
+                setTrie(loadedTrie);
+            }
         });
+        return () => { isMounted = false; };
     }, []);
 
-    const startNewQuiz = (difficulty: 'easy' | 'medium' | 'hard') => {
+    const startNewQuiz = (difficulty: 'easy' | 'medium' | 'hard' | 'mixed') => {
         if (!trie) return;
 
         setSelectedDifficulty(difficulty);
         const quiz = generatePracticeQuiz(trie, difficulty);
         setCurrentQuiz(quiz);
+    };
+
+    const handleBack = () => {
+        setCurrentQuiz(null);
     };
 
     if (!trie) {
@@ -56,41 +64,49 @@ export function PracticeMode() {
                 </div>
 
                 {/* Difficulty Selection */}
-                <div className="grid md:grid-cols-3 gap-6 mt-12">
+                <div className="grid md:grid-cols-4 gap-4 mt-12">
                     <motion.button
                         onClick={() => startNewQuiz('easy')}
                         whileHover={{ scale: 1.05, y: -5 }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-2xl p-8 text-left shadow-lg hover:shadow-xl transition-all group"
+                        className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
                     >
-                        <TbSparkles className="w-12 h-12 text-green-600 mb-4 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-2xl font-serif font-bold text-green-700 mb-2">Easy</h3>
-                        <p className="text-sm text-green-600 mb-4">3-8 words per quiz</p>
-                        <p className="text-xs text-green-600/80">Perfect for beginners learning common 3-4 letter words</p>
+                        <TbSparkles className="w-8 h-8 text-green-600 mb-3 group-hover:rotate-12 transition-transform" />
+                        <h3 className="text-xl font-serif font-bold text-green-700 mb-1">Easy</h3>
+                        <p className="text-xs text-green-600">3-8 words</p>
                     </motion.button>
 
                     <motion.button
                         onClick={() => startNewQuiz('medium')}
                         whileHover={{ scale: 1.05, y: -5 }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-200 rounded-2xl p-8 text-left shadow-lg hover:shadow-xl transition-all group"
+                        className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
                     >
-                        <TbBrain className="w-12 h-12 text-yellow-600 mb-4 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-2xl font-serif font-bold text-yellow-700 mb-2">Medium</h3>
-                        <p className="text-sm text-yellow-600 mb-4">8-15 words per quiz</p>
-                        <p className="text-xs text-yellow-600/80">Balanced challenge for intermediate players</p>
+                        <TbBrain className="w-8 h-8 text-yellow-600 mb-3 group-hover:rotate-12 transition-transform" />
+                        <h3 className="text-xl font-serif font-bold text-yellow-700 mb-1">Medium</h3>
+                        <p className="text-xs text-yellow-600">8-15 words</p>
                     </motion.button>
 
                     <motion.button
                         onClick={() => startNewQuiz('hard')}
                         whileHover={{ scale: 1.05, y: -5 }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-2xl p-8 text-left shadow-lg hover:shadow-xl transition-all group"
+                        className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
                     >
-                        <TbFlame className="w-12 h-12 text-red-600 mb-4 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-2xl font-serif font-bold text-red-700 mb-2">Hard</h3>
-                        <p className="text-sm text-red-600 mb-4">15-30 words per quiz</p>
-                        <p className="text-xs text-red-600/80">Advanced grids with many possible combinations</p>
+                        <TbFlame className="w-8 h-8 text-red-600 mb-3 group-hover:rotate-12 transition-transform" />
+                        <h3 className="text-xl font-serif font-bold text-red-700 mb-1">Hard</h3>
+                        <p className="text-xs text-red-600">15-30 words</p>
+                    </motion.button>
+
+                    <motion.button
+                        onClick={() => startNewQuiz('mixed')}
+                        whileHover={{ scale: 1.05, y: -5 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
+                    >
+                        <TbSparkles className="w-8 h-8 text-purple-600 mb-3 group-hover:rotate-12 transition-transform" />
+                        <h3 className="text-xl font-serif font-bold text-purple-700 mb-1">Mixed</h3>
+                        <p className="text-xs text-purple-600">Random Grids</p>
                     </motion.button>
                 </div>
 
@@ -112,7 +128,7 @@ export function PracticeMode() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-[#D4AF37] mt-1">•</span>
-                            <span>Use "Reveal" if you're stuck to see all possible words</span>
+                            <span>Use "Reveal" if you're stuck (or press Space)</span>
                         </li>
                     </ul>
                 </div>
@@ -120,5 +136,5 @@ export function PracticeMode() {
         );
     }
 
-    return <PracticeQuizComponent quiz={currentQuiz} onNewQuiz={startNewQuiz} />;
+    return <PracticeQuizComponent quiz={currentQuiz} onNewQuiz={startNewQuiz} onBack={handleBack} />;
 }

@@ -8,7 +8,7 @@ export interface PracticeQuiz {
     grid: string[][];
     letters: string; // Flattened letters for display
     validWords: Set<string>;
-    difficulty: 'easy' | 'medium' | 'hard';
+    difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
 }
 
 /**
@@ -82,7 +82,7 @@ function findAllWordsIn2x2Grid(grid: string[][], trie: Trie): Set<string> {
 /**
  * Generate a random 2x2 practice grid
  */
-export function generatePracticeQuiz(trie: Trie, targetDifficulty: 'easy' | 'medium' | 'hard' = 'medium'): PracticeQuiz {
+export function generatePracticeQuiz(trie: Trie, targetDifficulty: 'easy' | 'medium' | 'hard' | 'mixed' = 'medium'): PracticeQuiz {
     const commonLetters = 'EARIOTNSLCUDPMHGBFYWKVXZJQ';
     const vowels = 'AEIOU';
     const consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
@@ -95,7 +95,8 @@ export function generatePracticeQuiz(trie: Trie, targetDifficulty: 'easy' | 'med
     const targets = {
         easy: { min: 3, max: 8 },
         medium: { min: 8, max: 15 },
-        hard: { min: 15, max: 30 }
+        hard: { min: 15, max: 30 },
+        mixed: { min: 3, max: 100 } // Broad range for mixed
     };
 
     const target = targets[targetDifficulty];
@@ -180,7 +181,7 @@ export function generatePracticeQuizFromLetters(letters: string, trie: Trie): Pr
     const validWords = findAllWordsIn2x2Grid(grid, trie);
 
     // Determine difficulty based on word count
-    let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
+    let difficulty: 'easy' | 'medium' | 'hard' | 'mixed' = 'medium';
     if (validWords.size < 8) difficulty = 'easy';
     else if (validWords.size > 15) difficulty = 'hard';
 

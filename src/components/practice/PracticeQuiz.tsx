@@ -2,19 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TbCheck, TbX, TbEye, TbRefresh, TbTrophy } from 'react-icons/tb';
+import { TbCheck, TbX, TbEye, TbRefresh, TbTrophy, TbArrowLeft } from 'react-icons/tb';
 import { PracticeQuiz } from '@/lib/boggle/practice';
 
 interface PracticeQuizProps {
     quiz: PracticeQuiz;
-    onNewQuiz: (difficulty: 'easy' | 'medium' | 'hard') => void;
+    onNewQuiz: (difficulty: 'easy' | 'medium' | 'hard' | 'mixed') => void;
+    onBack: () => void;
 }
 
-export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
+export function PracticeQuizComponent({ quiz, onNewQuiz, onBack }: PracticeQuizProps) {
     const [input, setInput] = useState('');
     const [foundWords, setFoundWords] = useState<Set<string>>(new Set());
     const [showAnswers, setShowAnswers] = useState(false);
     const [lastSubmitStatus, setLastSubmitStatus] = useState<'valid' | 'invalid' | 'duplicate' | null>(null);
+    const [isShaking, setIsShaking] = useState(false);
 
     // Reset state when quiz changes
     useEffect(() => {
@@ -22,7 +24,38 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
         setInput('');
         setShowAnswers(false);
         setLastSubmitStatus(null);
+        setIsShaking(false);
     }, [quiz]);
+
+    const handleReveal = () => {
+        if (!showAnswers) setShowAnswers(true);
+    };
+
+    // Hotkeys
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // "Space" to reveal (prevent default to stop typing space)
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleReveal();
+            }
+
+            if (e.key === 'Enter') {
+                const allFound = foundWords.size === quiz.validWords.size;
+                if (showAnswers || allFound) {
+                    e.preventDefault();
+                    onNewQuiz(quiz.difficulty);
+                }
+            }
+
+            if (e.key === 'Escape') {
+                onBack();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [showAnswers, foundWords.size, quiz.validWords.size, quiz.difficulty, onNewQuiz, onBack]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,11 +64,15 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
 
         if (word.length < 3) {
             setLastSubmitStatus('invalid');
+            triggerShake();
+            setInput(''); // Clear on invalid
             return;
         }
 
         if (foundWords.has(word)) {
             setLastSubmitStatus('duplicate');
+            triggerShake();
+            setInput(''); // Clear on duplicate
             return;
         }
 
@@ -45,11 +82,14 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
             setLastSubmitStatus('valid');
         } else {
             setLastSubmitStatus('invalid');
+            triggerShake();
+            setInput(''); // Clear on invalid
         }
     };
 
-    const handleReveal = () => {
-        setShowAnswers(true);
+    const triggerShake = () => {
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
     };
 
     const progress = (foundWords.size / quiz.validWords.size) * 100;
@@ -64,12 +104,21 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
 
     return (
         <div className="w-full max-w-4xl mx-auto space-y-6">
+            <button
+                onClick={onBack}
+                className="flex items-center gap-2 text-[#666] hover:text-[#1A3C34] transition-colors text-sm font-semibold"
+            >
+                <TbArrowLeft className="w-4 h-4" />
+                Back to Menu
+            </button>
+
             {/* Header with difficulty and progress */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className={`px-3 py-1 rounded-full text-xs font-mono uppercase tracking-widest ${quiz.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                            quiz.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
+                        quiz.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            quiz.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                                'bg-purple-100 text-purple-700'
                         }`}>
                         {quiz.difficulty}
                     </div>
@@ -81,15 +130,18 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
                 <div className="flex gap-2">
                     <button
                         onClick={handleReveal}
-                        className="px-4 py-2 bg-[#8A8A8A] hover:bg-[#666] text-white rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors"
+                        className="px-4 py-2 bg-[#8A8A8A] hover:bg-[#666] text-white rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors relative"
                         disabled={showAnswers}
+                        title="Press Space"
                     >
                         <TbEye className="w-4 h-4" />
                         Reveal
+                        <span className="hidden md:inline ml-1 text-[10px] opacity-70 bg-black/20 px-1 rounded">SPACE</span>
                     </button>
                     <button
                         onClick={() => onNewQuiz(quiz.difficulty)}
                         className="px-4 py-2 bg-[#1A3C34] hover:bg-[#142E28] text-white rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors"
+                        title="Press Enter when done"
                     >
                         <TbRefresh className="w-4 h-4" />
                         New Quiz
@@ -118,7 +170,12 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
                     >
                         <TbTrophy className="w-12 h-12 mx-auto mb-3 text-[#D4AF37]" />
                         <div className="text-2xl font-serif font-bold mb-2">Perfect Score!</div>
-                        <div className="text-sm text-[#8A9A90]">You found all {quiz.validWords.size} words!</div>
+                        <div className="text-sm text-[#8A9A90] mb-4">You found all {quiz.validWords.size} words!</div>
+                        <div className="flex justify-center items-center gap-2 text-xs text-[#8A9A90]/70">
+                            <span>Press</span>
+                            <kbd className="px-2 py-1 bg-white/10 rounded font-mono text-white">Enter</kbd>
+                            <span>for next quiz</span>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -146,13 +203,20 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
             {/* Input Form */}
             {!allFound && (
                 <form onSubmit={handleSubmit} className="space-y-2">
-                    <div className="relative">
+                    <motion.div
+                        className="relative"
+                        animate={isShaking ? { x: [-10, 10, -10, 10, 0] } : {}}
+                        transition={{ duration: 0.4 }}
+                    >
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value.toUpperCase())}
                             placeholder="Type a word..."
-                            className="w-full px-6 py-4 text-lg font-mono uppercase border-2 border-[#E6E4DD] rounded-xl focus:outline-none focus:border-[#1A3C34] transition-colors bg-white"
+                            className={`w-full px-6 py-4 text-lg font-mono uppercase border-2 rounded-xl focus:outline-none transition-colors bg-white ${lastSubmitStatus === 'invalid' || lastSubmitStatus === 'duplicate'
+                                ? 'border-red-300 focus:border-red-500'
+                                : 'border-[#E6E4DD] focus:border-[#1A3C34]'
+                                }`}
                             autoFocus
                         />
                         {lastSubmitStatus && (
@@ -162,11 +226,10 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
                                 className="absolute right-4 top-1/2 -translate-y-1/2"
                             >
                                 {lastSubmitStatus === 'valid' && <TbCheck className="w-6 h-6 text-green-500" />}
-                                {lastSubmitStatus === 'invalid' && <TbX className="w-6 h-6 text-red-500" />}
-                                {lastSubmitStatus === 'duplicate' && <TbX className="w-6 h-6 text-yellow-500" />}
+                                {(lastSubmitStatus === 'invalid' || lastSubmitStatus === 'duplicate') && <TbX className="w-6 h-6 text-red-500" />}
                             </motion.div>
                         )}
-                    </div>
+                    </motion.div>
 
                     {lastSubmitStatus === 'invalid' && (
                         <motion.div
@@ -227,7 +290,7 @@ export function PracticeQuizComponent({ quiz, onNewQuiz }: PracticeQuizProps) {
                                     key={word}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="px-3 py-2 bg-[#F9F7F1] border border-[#E6E4DD] rounded-lg text-sm font-mono text-[#666]"
+                                    className="px-3 py-2 bg-[#F9F7F1] border border-[#E6E4DD] rounded-lg text-sm font-mono text-[#1A1A1A]"
                                 >
                                     {word}
                                 </motion.div>
