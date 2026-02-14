@@ -47,6 +47,28 @@ export async function submitGameResult(
 }
 
 /**
+ * Check if user has already played today's daily challenge
+ */
+export async function hasPlayedDailyToday(userId: string): Promise<boolean> {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        const { count, error } = await supabase
+            .from('game_stats')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('game_date', today)
+            .eq('is_daily_challenge', true);
+
+        if (error) throw error;
+        return (count || 0) > 0;
+    } catch (error) {
+        console.error('Error checking played status:', error);
+        return false;
+    }
+}
+
+/**
  * Get today's daily challenge leaderboard
  */
 export async function getTodaysLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {

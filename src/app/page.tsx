@@ -34,6 +34,7 @@ export default function BogglePage() {
     gameWasManual,
     allPossibleWords,
     isDailyChallenge,
+    isDailyReplay,
     isCustomBoardLoaded,
 
     // Actions
@@ -196,6 +197,7 @@ export default function BogglePage() {
               <DailyChallengeBanner
                 onStartDaily={startDailyChallenge}
                 isActive={gameActive}
+                hasPlayed={isDailyReplay}
               />
             )}
 

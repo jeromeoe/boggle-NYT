@@ -7,9 +7,10 @@ import { TbCalendar, TbSparkles } from "react-icons/tb";
 interface DailyChallengeProps {
     onStartDaily: () => void;
     isActive: boolean;
+    hasPlayed?: boolean;
 }
 
-export function DailyChallengeBanner({ onStartDaily, isActive }: DailyChallengeProps) {
+export function DailyChallengeBanner({ onStartDaily, isActive, hasPlayed }: DailyChallengeProps) {
     const [dateStr, setDateStr] = useState<string>("");
 
     useEffect(() => {
@@ -59,18 +60,25 @@ export function DailyChallengeBanner({ onStartDaily, isActive }: DailyChallengeP
                     </h3>
 
                     <p className="text-[#B8C5BD] text-sm">
-                        The curated Boggle Board for the day. Compete globally!
+                        {hasPlayed
+                            ? "You've already played today's challenge. Replay for practice!"
+                            : "The curated Boggle Board for the day. Compete globally!"}
                     </p>
                 </div>
 
-                <button
-                    onClick={onStartDaily}
-                    disabled={isActive}
-                    className="px-8 py-4 bg-[#D4AF37] hover:bg-[#C49F2F] text-[#1A3C34] font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
-                >
-                    <TbSparkles className="w-5 h-5" />
-                    {isActive ? 'Loading...' : 'Play Daily'}
-                </button>
+                <div className="flex flex-col items-end gap-2">
+                    <button
+                        onClick={onStartDaily}
+                        disabled={isActive}
+                        className={`px-8 py-4 ${hasPlayed ? 'bg-[#2D5A4A] border-2 border-[#D4AF37] text-[#D4AF37]' : 'bg-[#D4AF37] text-[#1A3C34]'} hover:brightness-110 font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2`}
+                    >
+                        <TbSparkles className="w-5 h-5" />
+                        {isActive ? 'Loading...' : hasPlayed ? 'Replay' : 'Play Daily'}
+                    </button>
+                    {hasPlayed && (
+                        <span className="text-xs text-[#8A9A90] font-mono">Score managed</span>
+                    )}
+                </div>
             </div>
         </motion.div>
     );

@@ -26,6 +26,7 @@ export function useGameLogic() {
     const [showResults, setShowResults] = useState(false);
     const [gameWasManual, setGameWasManual] = useState(false);
     const [isDailyChallenge, setIsDailyChallenge] = useState(false);
+    const [isDailyReplay, setIsDailyReplay] = useState(false);
     const [isCustomBoardLoaded, setIsCustomBoardLoaded] = useState(false);
 
     // Timer ref
@@ -39,6 +40,23 @@ export function useGameLogic() {
             setDictionaryLoaded(true);
             setStatusMessage("Ready to play!");
         });
+
+        // Check daily status
+        if (typeof window !== 'undefined') {
+            const userStr = localStorage.getItem('boggle_user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    import('@/lib/supabase/leaderboard').then(({ hasPlayedDailyToday }) => {
+                        hasPlayedDailyToday(user.id).then(played => {
+                            if (played) setIsDailyReplay(true);
+                        });
+                    });
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
     }, []);
 
     // Timer countdown
@@ -72,30 +90,34 @@ export function useGameLogic() {
             if (userStr) {
                 try {
                     const user = JSON.parse(userStr);
-                    const { submitGameResult } = await import('@/lib/supabase/leaderboard');
+                    // Only submit if this wasn't a replay
+                    if (!isDailyReplay) {
+                        const { submitGameResult } = await import('@/lib/supabase/leaderboard');
 
-                    const scores = calculateTotalScore(foundWords, penalizedWords);
-                    const gameDuration = GAME_DURATION - timeLeft;
+                        const scores = calculateTotalScore(foundWords, penalizedWords);
+                        const gameDuration = GAME_DURATION - timeLeft;
 
-                    await submitGameResult(user.id, {
-                        grossScore: scores.gross,
-                        penaltyScore: scores.penalty,
-                        netScore: scores.net,
-                        wordsFound: foundWords,
-                        wordsPenalized: penalizedWords,
-                        totalPossibleWords: allPossibleWords.size,
-                        durationSeconds: gameDuration,
-                        boardState: board,
-                        isDailyChallenge: true
-                    });
+                        await submitGameResult(user.id, {
+                            grossScore: scores.gross,
+                            penaltyScore: scores.penalty,
+                            netScore: scores.net,
+                            wordsFound: foundWords,
+                            wordsPenalized: penalizedWords,
+                            totalPossibleWords: allPossibleWords.size,
+                            durationSeconds: gameDuration,
+                            boardState: board,
+                            isDailyChallenge: true
+                        });
 
-                    console.log('Score submitted to leaderboard!');
+                        setIsDailyReplay(true); // Mark as played so UI updates
+                        console.log('Score submitted to leaderboard!');
+                    }
                 } catch (error) {
                     console.error('Failed to submit score:', error);
                 }
             }
         }
-    }, [isDailyChallenge, foundWords, penalizedWords, timeLeft, allPossibleWords, board]);
+    }, [isDailyChallenge, isDailyReplay, foundWords, penalizedWords, timeLeft, allPossibleWords, board]);
 
     const startGame = useCallback(() => {
         if (!trie) return;
@@ -177,13 +199,34 @@ export function useGameLogic() {
 
     const scores = calculateTotalScore(foundWords, penalizedWords);
 
+
+
     const startDailyChallenge = useCallback(async () => {
         if (!trie) return;
 
         setStatusMessage("Loading daily challenge...");
         setIsDailyChallenge(true);
+        setIsDailyReplay(false); // Reset initially
 
         try {
+            // Check if user has played today
+            if (typeof window !== 'undefined') {
+                const userStr = localStorage.getItem('boggle_user');
+                if (userStr) {
+                    try {
+                        const user = JSON.parse(userStr);
+                        const { hasPlayedDailyToday } = await import('@/lib/supabase/leaderboard');
+                        const alreadyPlayed = await hasPlayedDailyToday(user.id);
+                        setIsDailyReplay(alreadyPlayed);
+                        if (alreadyPlayed) {
+                            console.log("Daily challenge already played today. Replay mode active (score will not be saved).");
+                        }
+                    } catch (e) {
+                        console.error("Error checking daily status:", e);
+                    }
+                }
+            }
+
             // Import daily module
             const { getTodaysDailyBoard } = await import("@/lib/boggle/daily");
             const dailyResult = await getTodaysDailyBoard();
@@ -220,6 +263,7 @@ export function useGameLogic() {
         gameWasManual,
         allPossibleWords,
         isDailyChallenge,
+        isDailyReplay,
         isCustomBoardLoaded,
 
         // Actions
