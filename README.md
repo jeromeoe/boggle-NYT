@@ -5,7 +5,7 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 
 ![Boggle.WEB Screenshot](https://via.placeholder.com/800x400?text=Boggle+Screenshot)
 
-## 🎯 Features
+## Features
 
 - **Premium Design**: Elegant "Intellectual Play" aesthetic with cream/parchment colors and serif typography
 - **Prominent Scoring**: Hero-style score display with real-time visual feedback
@@ -15,7 +15,7 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 - **Blazing Fast**: Optimized dictionary loading and instant word validation
 - **Coming Soon**: Daily challenges, leaderboards, and multiplayer mode
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -63,14 +63,14 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 
 6. **Open [http://localhost:3000](http://localhost:3000)**
 
-## 🎲 How to Play
+## How to Play
 
 1. **Start a Game**: Click "Start New Game" to generate a random 4x4 board
 2. **Find Words**: Click tiles or type letters to form words (minimum 3 letters)
 3. **Submit**: Press Enter or click Submit
 4. **Score Points**: 
    - Valid words = positive points (longer words = more points)
-   - Invalid words = -1 penalty
+   - Invalid words = Scaling Penalty 
    - Duplicates = ignored
 5. **Beat the Clock**: You have 3 minutes to find as many words as possible!
 
@@ -85,9 +85,8 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 | 7 letters  | 5      |
 | 8+ letters | 11     |
 
-**Penalties**: -1 point for words not in dictionary or not on the board
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
@@ -96,62 +95,40 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 - **Auth**: Custom username/password with bcrypt
 - **Dictionary**: CSW24 (280k+ words)
 
-## 📂 Project Structure
-
-```
-/src
-  /app                    # Next.js pages
-  /components
-    /game                 # Board, Tile, Timer, Controls
-    /analysis             # ResultsReport
-    /auth                 # AuthModal
-    /shared               # NoiseOverlay, utilities
-  /hooks                  # useGameLogic
-  /lib
-    /boggle               # Game logic (solver, scoring, dice)
-    /supabase             # Supabase client & auth
-/sql                      # Database schemas & migrations
-/public/data              # CSW24 dictionary JSON
-```
-
-## 🎨 Design Philosophy
-
-This project follows the "Intellectual Play" design system:
+## Design Philosophy
 
 - **Typography**: Fraunces (serif) for headers, Geist Sans for UI
 - **Colors**: Cream (#F9F7F1), Forest Green (#1A3C34), Gold (#D4AF37)
-- **Motion**: Subtle, physics-based animations
+- **Motion**: Framer Motion for smooth animations 
 - **Accessibility**: Full keyboard navigation and screen reader support
 
-See `Agent.md` for complete design guidelines.
-
-## 🔒 Security
+## Security
 
 - Row Level Security (RLS) enabled on all database tables
 - Passwords hashed with bcrypt (10 rounds)
 - Environment variables for sensitive credentials
 - Input validation on client and server
 
-## 📝 License
+## License
 
 MIT License - feel free to use this project for learning or building your own word game!
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - CSW24 dictionary from [NASPA](https://www.scrabbleplayers.org/)
 - Inspired by NYT Games and classic Boggle
-- Built with ❤️ using [Next.js](https://nextjs.org/) and [Supabase](https://supabase.com/)
+- Built using [Next.js](https://nextjs.org/) and [Supabase](https://supabase.com/)
 
-## 🐛 Found a Bug?
+## Found a Bug?
 
 Please open an issue on GitHub with:
 - Steps to reproduce
 - Expected vs actual behavior
 - Screenshots if applicable
 
-## 🚧 Roadmap
+## Roadmap
 
-- [ ] Daily Challenge mode (same board for all players)
+- [x] Daily Challenge mode (same board for all players)
 - [ ] Global leaderboards
 - [ ] Statistics dashboard
 - [ ] Social sharing
@@ -160,4 +137,4 @@ Please open an issue on GitHub with:
 
 ---
 
-**Enjoy playing Boggle!** 🎉
+**Enjoy playing Boggle!** 
