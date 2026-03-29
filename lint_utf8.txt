@@ -1,0 +1,110 @@
+﻿
+> boggle_web@0.1.0 lint
+> eslint
+
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\app\page.tsx
+  16:18  warning  'AnimatePresence' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  36:5   warning  'isDailyChallenge' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  51:36  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  59:22  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\app\page.tsx:59:22
+  57 |   useEffect(() => {
+  58 |     const currentUser = getCurrentUser();
+> 59 |     if (currentUser) setUser(currentUser);
+     |                      ^^^^^^^ Avoid calling setState() directly within an effect
+  60 |   }, []);
+  61 |
+  62 |   const handleSubmit = () => {  react-hooks/set-state-in-effect
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\auth\AuthModal.tsx
+  10:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\game\DailyChallenge.tsx
+  18:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\game\DailyChallenge.tsx:18:9
+  16 |     useEffect(() => {
+  17 |         const today = new Date();
+> 18 |         setDateStr(today.toLocaleDateString('en-US', {
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |             weekday: 'long',
+  20 |             month: 'long',
+  21 |             day: 'numeric'  react-hooks/set-state-in-effect
+  59:30  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react/no-unescaped-entities
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\game\Leaderboard.tsx
+   41:8   warning  React Hook useEffect has a missing dependency: 'loadLeaderboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   86:50  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                     react/no-unescaped-entities
+  137:86  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                     react/no-unescaped-entities
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\practice\PracticeMode.tsx
+   11:38  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   13:12  warning  'selectedDifficulty' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  131:39  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  131:46  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  131:54  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\practice\PracticeQuiz.tsx
+  23:9  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\components\practice\PracticeQuiz.tsx:23:9
+  21 |     // Reset state when quiz changes
+  22 |     useEffect(() => {
+> 23 |         setFoundWords(new Set());
+     |         ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |         setInput('');
+  25 |         setShowAnswers(false);
+  26 |         setLastSubmitStatus(null);  react-hooks/set-state-in-effect
+  58:8  warning  React Hook useEffect has a missing dependency: 'handleReveal'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\hooks\useGameLogic.ts
+  80:8  warning  React Hook useEffect has a missing dependency: 'endGame'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\lib\boggle\analytics.ts
+  19:5  warning  'foundWords' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\lib\boggle\practice.ts
+  27:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\lib\boggle\solver.ts
+  3:6  warning  'Position' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\lib\supabase\auth.ts
+  29:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  88:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\lib\supabase\leaderboard.ts
+    2:15  warning  'GameStats' is defined but never used     @typescript-eslint/no-unused-vars
+   44:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:41  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  128:74  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  145:37  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\src\workers\game.worker.ts
+  25:22  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 32 problems (21 errors, 11 warnings)
+

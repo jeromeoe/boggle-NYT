@@ -11,6 +11,8 @@ import { AuthModal } from "@/components/auth/AuthModal";
 import { DailyChallengeBanner } from "@/components/game/DailyChallenge";
 import { LeaderboardModal } from "@/components/game/Leaderboard";
 import { PracticeMode } from "@/components/practice/PracticeMode";
+import { GameModeModal } from "@/components/game/GameModeModal";
+import type { GameMode } from "@/components/game/GameModeModal";
 import NoiseOverlay from "@/components/shared/noise-overlay";
 import { getCurrentUser, signOut } from "@/lib/supabase/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,9 +35,10 @@ export default function BogglePage() {
     showResults,
     gameWasManual,
     allPossibleWords,
-    isDailyChallenge,
     isDailyReplay,
     isCustomBoardLoaded,
+
+    isGeneratingBoard,
 
     // Actions
     startGame,
@@ -51,7 +54,13 @@ export default function BogglePage() {
   const [user, setUser] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showModeModal, setShowModeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'play' | 'practice'>('play');
+
+  const handleSelectMode = (mode: GameMode) => {
+    startGame(mode);
+    setShowModeModal(false);
+  };
 
   // Load user session on mount
   useEffect(() => {
@@ -274,9 +283,10 @@ export default function BogglePage() {
 
                 <GameControls
                   gameActive={gameActive}
-                  onStart={isCustomBoardLoaded ? startCustomGame : startGame}
+                  onStart={isCustomBoardLoaded ? startCustomGame : () => setShowModeModal(true)}
                   onEnd={() => endGame(true)}
                   onCustomBoard={handleCustomBoard}
+                  isLoading={isGeneratingBoard}
                 />
               </div>
 
@@ -297,31 +307,49 @@ export default function BogglePage() {
         )}
       </main>
 
-      {/* Results Modal */}
-      <ResultsReport
-        isOpen={showResults}
-        onClose={() => setShowResults(false)}
-        allPossibleWords={allPossibleWords}
-        foundWords={new Set(foundWords)}
-        gross={scores.gross}
-        penalty={scores.penalty}
-        net={scores.net}
-        wasManual={gameWasManual}
-      />
+      <AnimatePresence>
+        {/* Game Mode Modal */}
+        {showModeModal && (
+          <GameModeModal
+            isOpen={showModeModal}
+            onClose={() => setShowModeModal(false)}
+            onSelectMode={handleSelectMode}
+            isGenerating={isGeneratingBoard}
+          />
+        )}
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={setUser}
-      />
+        {/* Results Modal */}
+        {showResults && (
+          <ResultsReport
+            isOpen={showResults}
+            onClose={() => setShowResults(false)}
+            allPossibleWords={allPossibleWords}
+            foundWords={new Set(foundWords)}
+            gross={scores.gross}
+            penalty={scores.penalty}
+            net={scores.net}
+            wasManual={gameWasManual}
+          />
+        )}
 
-      {/* Leaderboard Modal */}
-      <LeaderboardModal
-        isOpen={showLeaderboard}
-        onClose={() => setShowLeaderboard(false)}
-        userId={user?.id}
-      />
+        {/* Auth Modal */}
+        {showAuthModal && (
+          <AuthModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onAuthSuccess={setUser}
+          />
+        )}
+
+        {/* Leaderboard Modal */}
+        {showLeaderboard && (
+          <LeaderboardModal
+            isOpen={showLeaderboard}
+            onClose={() => setShowLeaderboard(false)}
+            userId={user?.id}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

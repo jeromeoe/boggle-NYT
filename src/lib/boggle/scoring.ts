@@ -11,7 +11,7 @@ export function calculateScore(word: string): number {
     if (length === 6) return 3;
     if (length === 7) return 5;
     if (length === 8) return 7;
-    return 11; // 9+ letters
+    return 8; // 9+ letters
 }
 
 /**

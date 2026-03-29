@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { generateBoard, parseCustomBoard } from "@/lib/boggle/dice";
+import { generateBoard, generateOpenBoard, generateClosedBoard, parseCustomBoard } from "@/lib/boggle/dice";
+import type { GameMode } from "@/components/game/GameModeModal";
 import { loadDictionary } from "@/lib/boggle/trie";
 import { findAllWords } from "@/lib/boggle/solver";
 import { calculateTotalScore } from "@/lib/boggle/scoring";
@@ -28,6 +29,7 @@ export function useGameLogic() {
     const [isDailyChallenge, setIsDailyChallenge] = useState(false);
     const [isDailyReplay, setIsDailyReplay] = useState(false);
     const [isCustomBoardLoaded, setIsCustomBoardLoaded] = useState(false);
+    const [isGeneratingBoard, setIsGeneratingBoard] = useState(false);
 
     // Timer ref
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -119,11 +121,19 @@ export function useGameLogic() {
         }
     }, [isDailyChallenge, isDailyReplay, foundWords, penalizedWords, timeLeft, allPossibleWords, board]);
 
-    const startGame = useCallback(() => {
+    const startGame = useCallback(async (mode: GameMode = "random") => {
         if (!trie) return;
 
-        // Generate board
-        const newBoard = generateBoard();
+        setIsGeneratingBoard(true);
+
+        // Use setTimeout to let React flush the generating state before the sync loop blocks
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+        let newBoard: string[][];
+        if (mode === "open") newBoard = generateOpenBoard(trie);
+        else if (mode === "closed") newBoard = generateClosedBoard(trie);
+        else newBoard = generateBoard();
+
         const possible = findAllWords(newBoard, trie);
 
         setBoard(newBoard);
@@ -133,9 +143,10 @@ export function useGameLogic() {
         setTimeLeft(GAME_DURATION);
         setGameActive(true);
         setShowResults(false);
-        setIsDailyChallenge(false); // Reset daily challenge flag for regular games
-        setIsCustomBoardLoaded(false); // Reset custom board flag
+        setIsDailyChallenge(false);
+        setIsCustomBoardLoaded(false);
         setStatusMessage(`${possible.size} words available`);
+        setIsGeneratingBoard(false);
     }, [trie]);
 
     const startCustomGame = useCallback(() => {
@@ -265,6 +276,7 @@ export function useGameLogic() {
         isDailyChallenge,
         isDailyReplay,
         isCustomBoardLoaded,
+        isGeneratingBoard,
 
         // Actions
         startGame,

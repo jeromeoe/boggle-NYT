@@ -1,3 +1,6 @@
+import { findAllWords } from './solver';
+import type { Trie } from './trie';
+
 /**
  * New Boggle Dice configuration (16 dice)
  * Each die has 6 faces with specific letter distributions
@@ -76,6 +79,30 @@ export function generateBoardWithSeed(seed: number): string[][] {
     }
 
     return board;
+}
+
+/**
+ * Generate a board guaranteed to have >= 180 possible words (Open Board mode).
+ * Retries up to 500 times before falling back to a random board.
+ */
+export function generateOpenBoard(trie: Trie): string[][] {
+    for (let i = 0; i < 500; i++) {
+        const board = generateBoard();
+        if (findAllWords(board, trie).size >= 180) return board;
+    }
+    return generateBoard();
+}
+
+/**
+ * Generate a board guaranteed to have < 50 possible words (Closed Board mode).
+ * Retries up to 500 times before falling back to a random board.
+ */
+export function generateClosedBoard(trie: Trie): string[][] {
+    for (let i = 0; i < 500; i++) {
+        const board = generateBoard();
+        if (findAllWords(board, trie).size < 50) return board;
+    }
+    return generateBoard();
 }
 
 /**
