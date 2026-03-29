@@ -1,5 +1,5 @@
 import { supabase } from './client';
-import type { GameStats, LeaderboardEntry } from './client';
+import type { LeaderboardEntry } from './client';
 
 /**
  * Submit a game result to the database

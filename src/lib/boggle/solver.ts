@@ -1,7 +1,5 @@
 import { Trie, TrieNode } from './trie';
 
-type Position = [number, number];
-
 /**
  * Find all valid words on the Boggle board using DFS with Trie pruning
  * This is a direct port of the Python algorithm

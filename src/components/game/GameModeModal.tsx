@@ -19,28 +19,28 @@ const CLASSIC_MODES: {
     description: string;
     icon: React.ElementType;
 }[] = [
-    {
-        id: "open",
-        label: "Open Board",
-        badge: "≥ 180 words",
-        description: "High-density board. Many paths, many words. Great for warming up or chasing a high score.",
-        icon: TbLayoutGrid,
-    },
-    {
-        id: "closed",
-        label: "Closed Board",
-        badge: "< 50 words",
-        description: "Sparse board with few valid words. Every letter matters. Expert-level challenge.",
-        icon: TbLock,
-    },
-    {
-        id: "random",
-        label: "Random",
-        badge: "Unpredictable",
-        description: "Pure dice roll. No filters. Could be easy, could be brutal. The classic experience.",
-        icon: TbDice,
-    },
-];
+        {
+            id: "open",
+            label: "Open Board",
+            badge: "≥ 180 words",
+            description: "High density board for speed work.",
+            icon: TbLayoutGrid,
+        },
+        {
+            id: "closed",
+            label: "Closed Board",
+            badge: "< 50 words",
+            description: "Sparse board for focused memory work.",
+            icon: TbLock,
+        },
+        {
+            id: "random",
+            label: "Random",
+            badge: "Unpredictable",
+            description: "Surprise yourself!",
+            icon: TbDice,
+        },
+    ];
 
 const COMING_SOON = [
     {

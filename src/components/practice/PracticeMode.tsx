@@ -6,9 +6,10 @@ import { TbBrain, TbFlame, TbSparkles } from 'react-icons/tb';
 import { generatePracticeQuiz, PracticeQuiz } from '@/lib/boggle/practice';
 import { PracticeQuizComponent } from '@/components/practice/PracticeQuiz';
 import { loadDictionary } from '@/lib/boggle/trie';
+import type { Trie } from '@/lib/boggle/trie';
 
 export function PracticeMode() {
-    const [trie, setTrie] = useState<any>(null);
+    const [trie, setTrie] = useState<Trie | null>(null);
     const [currentQuiz, setCurrentQuiz] = useState<PracticeQuiz | null>(null);
     const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('medium');
 
@@ -128,7 +129,7 @@ export function PracticeMode() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-[#D4AF37] mt-1">•</span>
-                            <span>Use "Reveal" if you're stuck (or press Space)</span>
+                            <span>{`Use "Reveal" if you're stuck (or press Space)`}</span>
                         </li>
                     </ul>
                 </div>

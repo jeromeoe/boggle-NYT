@@ -1,4 +1,5 @@
 # Boggle.WEB — Implementation Plan
+
 > Generated: 2026-03-29 | Based on project audit + feature requests
 
 ---
@@ -68,6 +69,7 @@ Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (never expose to client).
 #### Step 3 — Create API routes
 
 **`src/app/api/auth/signin/route.ts`**
+
 - Accept `{ username, password }` via POST
 - Query user by username using the **service role client** (server-only)
 - Run `bcrypt.compare()` server-side
@@ -75,12 +77,14 @@ Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (never expose to client).
 - Never return `password_hash` to the client
 
 **`src/app/api/auth/signup/route.ts`**
+
 - Accept `{ username, password, email?, displayName? }` via POST
 - Validate with Zod
 - Hash password server-side
 - Insert user via service role client
 
 **`src/app/api/auth/forgot-password/route.ts`**
+
 - Accept `{ username }` via POST
 - Look up user's email; if none on file, return a generic "if that account exists, an email was sent" (prevents user enumeration)
 - Generate a cryptographically secure token: `crypto.randomBytes(32).toString('hex')`
@@ -100,11 +104,13 @@ await resend.emails.send({
 ```
 
 **`src/app/api/auth/reset-password/route.ts`**
+
 - Accept `{ token, newPassword }` via POST
 - Hash the incoming token, look up the record, verify `expires_at` and `used = false`
 - Hash new password, update `users.password_hash`, mark token as `used = true`
 
 **`src/app/reset-password/page.tsx`**
+
 - Reads `?token=` from URL, shows a form with "New Password" + "Confirm Password"
 - On submit, calls the reset API route
 - Redirects to home with a success message on completion
@@ -118,6 +124,7 @@ await resend.emails.send({
 #### Step 5 — Update AuthModal
 
 Add a third "mode" state: `"forgot"`. When `mode === "forgot"`:
+
 - Show only an email/username field
 - Show a "Send Reset Email" button
 - Show confirmation text after submission: "If that account has an email on file, a reset link was sent."
@@ -143,11 +150,11 @@ appears letting them choose the game type. The modal matches the existing aesthe
 
 The terms "Open Board" and "Closed Board" refer to **generated word density**:
 
-| Mode | Word Count Target | Description |
-|---|---|---|
-| **Open Board** | ≥ 80 words | High-vowel, many intersections. Regenerates until threshold is met. Approachable. |
-| **Closed Board** | 40–65 words | Tighter consonant layout. Fewer words, each worth more. Challenging. |
-| **Random** | No filter | Pure dice roll. Current default behavior. Fast. |
+| Mode                   | Word Count Target | Description                                                                       |
+| ---------------------- | ----------------- | --------------------------------------------------------------------------------- |
+| **Open Board**   | ≥ 80 words       | High-vowel, many intersections. Regenerates until threshold is met. Approachable. |
+| **Closed Board** | 40–65 words      | Tighter consonant layout. Fewer words, each worth more. Challenging.              |
+| **Random**       | No filter         | Pure dice roll. Current default behavior. Fast.                                   |
 
 Generation for Open/Closed works by looping `generateBoard()` + `findAllWords()` until the word
 count falls in the target range. This runs in the existing Web Worker thread to avoid blocking UI.
@@ -195,59 +202,15 @@ export async function generateClosedBoard(trie: Trie): Promise<string[][]> {
 }
 ```
 
-#### Step 2 — Add `GameModeModal` component
-
-**File**: `src/components/game/GameModeModal.tsx`
-
-Props:
-```ts
-interface GameModeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelectMode: (mode: 'open' | 'closed' | 'random') => void;
-  isGenerating: boolean;
-}
-```
-
-Visual: three card options in a row/column. Active modes have a hover/select state.
-"Coming Soon" modes are grayed out with a `SOON` badge.
-
-#### Step 3 — Update `useGameLogic.ts`
-
-Add a `startGame(mode: 'open' | 'closed' | 'random')` parameter:
-
-```ts
-const startGame = useCallback(async (mode: 'open' | 'closed' | 'random' = 'random') => {
-  if (!trie) return;
-  setIsGeneratingBoard(true);
-
-  let newBoard: string[][];
-  if (mode === 'open') newBoard = await generateOpenBoard(trie);
-  else if (mode === 'closed') newBoard = await generateClosedBoard(trie);
-  else newBoard = generateBoard();
-
-  // ... rest of start logic unchanged
-}, [trie]);
-```
-
-Add `isGeneratingBoard` to the returned state so `GameControls` can show a spinner.
-
-#### Step 4 — Update `page.tsx` + `GameControls`
-
-- Add `showModeModal` state to `page.tsx`
-- `GameControls.onStart` → sets `showModeModal = true` instead of calling `startGame` directly
-- `GameModeModal.onSelectMode(mode)` → calls `startGame(mode)`, closes modal
-- Keep the existing "Enter Custom Board Layout..." link unchanged
-
----
-
 ## Feature 3: Bug Fixes (from Audit)
 
 ### 3a — Critical: Client-side password verification
+
 **File**: `src/lib/supabase/auth.ts:40-54`
 **Fix**: Covered entirely by Feature 1 API route migration.
 
 ### 3b — Stale closure in `endGame`
+
 **File**: `src/hooks/useGameLogic.ts:82-120`
 
 `endGame` references `foundWords`, `penalizedWords`, `timeLeft`, etc. via closure.
@@ -268,6 +231,7 @@ Then read from `*Ref.current` inside `endGame` instead of the state variables. T
 `foundWords` and `penalizedWords` from the `endGame` dependency array, breaking the cascade.
 
 ### 3c — Timer end effect missing `endGame` in deps
+
 **File**: `src/hooks/useGameLogic.ts:76-80`
 
 ```ts
@@ -286,10 +250,12 @@ With the ref fix from 3b, `endGame`'s deps array stabilizes (no re-creation on e
 so adding it here won't cause a loop.
 
 ### 3d — Unused variables
+
 - **`src/lib/boggle/solver.ts`**: Remove the imported `Position` type if it's not used in the file
 - **`src/lib/supabase/leaderboard.ts`**: Remove the unused `GameStats` import from `./client`
 
 ### 3e — Loose `any` typing
+
 Priority replacements:
 
 ```ts
@@ -308,7 +274,9 @@ export async function signIn(...): Promise<{ user: BoggleUser | null; error: str
 ```
 
 ### 3f — Unescaped JSX entities
+
 Replace bare apostrophes and quotes in JSX string content with HTML entities:
+
 - `Don't` → `Don&apos;t`
 - `You've` → `You&apos;ve`
 
@@ -316,6 +284,7 @@ These are ESLint `react/no-unescaped-entities` warnings across `AuthModal.tsx`,
 `DailyChallenge.tsx`, and practice components.
 
 ### 3g — `AnimatePresence` not wrapping modals in `page.tsx`
+
 **File**: `src/app/page.tsx:16` — `AnimatePresence` is imported but never used in the file.
 
 Wrap `ResultsReport`, `AuthModal`, and `LeaderboardModal` render calls:
@@ -330,55 +299,7 @@ This enables exit animations when modals unmount.
 
 ---
 
-## Feature 4: Leaderboard / Daily Board Reset Time Mismatch
-
-### Root Cause
-
-Two different time references are used for what should be the same "day":
-
-| Location | Code | Result |
-|---|---|---|
-| `src/lib/boggle/daily.ts:8-9` | `new Date(); today.setHours(0,0,0,0)` | **Local time** midnight |
-| `src/lib/supabase/leaderboard.ts:27` | `new Date().toISOString().split('T')[0]` | **UTC** midnight |
-
-For a user in UTC+5, the leaderboard query uses UTC date `2026-03-29` but the board was
-generated for local date `2026-03-29` (which is actually UTC `2026-03-28` until 5 AM local).
-Result: leaderboard and board are on different "days" for 5 hours every day.
-
-### Fix: Standardize on UTC everywhere
-
-**`src/lib/boggle/daily.ts`** — remove local-time normalization:
-
-```ts
-// Before
-export async function getTodaysDailyBoard() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // ← local midnight (WRONG)
-  const dateStr = today.toISOString().split('T')[0];
-  ...
-}
-
-// After
-export async function getTodaysDailyBoard() {
-  const dateStr = new Date().toISOString().split('T')[0]; // ← UTC date (consistent)
-  const baseSeed = parseInt(dateStr.replace(/-/g, ''));
-  const dayOffset = new Date().getUTCDay() * 7; // ← use getUTCDay() not getDay()
-  const seed = baseSeed + dayOffset;
-  ...
-}
-```
-
-**`src/lib/supabase/leaderboard.ts`** — already uses UTC, no change needed.
-
-**`src/hooks/useGameLogic.ts`** — the `hasPlayedDailyToday` check also uses
-`new Date().toISOString().split('T')[0]` internally (via `leaderboard.ts`), which is already UTC.
-No change needed there.
-
-**Note**: This is a **breaking change** for boards already seeded. Any games saved today before
-the fix will be on a different seed than games saved after. This is acceptable given the mismatch
-was already causing incorrect behavior. Consider running the fix at a day boundary.
-
----
+\---
 
 ## Feature 5: Tech Stack Alignment
 
@@ -458,13 +379,13 @@ submission (analogous to the auth API routes).
 
 ## Priority & Sequencing
 
-| Order | Feature | Reason |
-|---|---|---|
-| **1** | Feature 4 — Fix UTC mismatch | 2-line fix, stops daily bug immediately |
-| **2** | Feature 3d/3e/3f — Lint fixes | Low risk, improves type safety before bigger changes |
-| **3** | Feature 1 — Auth API routes + email | Security-critical; do before traffic grows |
-| **4** | Feature 2 — Game mode modal | User-facing feature; needs Feature 3 (deps fix) first |
-| **5** | Feature 5 — Tech alignment | Ongoing; apply as each feature above is built |
+| Order       | Feature                              | Reason                                                |
+| ----------- | ------------------------------------ | ----------------------------------------------------- |
+| **1** | Feature 4 — Fix UTC mismatch        | 2-line fix, stops daily bug immediately               |
+| **2** | Feature 3d/3e/3f — Lint fixes       | Low risk, improves type safety before bigger changes  |
+| **3** | Feature 1 — Auth API routes + email | Security-critical; do before traffic grows            |
+| **4** | Feature 2 — Game mode modal         | User-facing feature; needs Feature 3 (deps fix) first |
+| **5** | Feature 5 — Tech alignment          | Ongoing; apply as each feature above is built         |
 
 ---
 

@@ -34,6 +34,24 @@ export function useGameLogic() {
     // Timer ref
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Refs that mirror state so endGame can always read fresh values
+    // without being recreated on every state change
+    const foundWordsRef = useRef<string[]>([]);
+    const penalizedWordsRef = useRef<string[]>([]);
+    const timeLeftRef = useRef(0);
+    const allPossibleWordsRef = useRef<Set<string>>(new Set());
+    const boardRef = useRef<string[][]>([]);
+    const isDailyChallengeRef = useRef(false);
+    const isDailyReplayRef = useRef(false);
+
+    useEffect(() => { foundWordsRef.current = foundWords; }, [foundWords]);
+    useEffect(() => { penalizedWordsRef.current = penalizedWords; }, [penalizedWords]);
+    useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+    useEffect(() => { allPossibleWordsRef.current = allPossibleWords; }, [allPossibleWords]);
+    useEffect(() => { boardRef.current = board; }, [board]);
+    useEffect(() => { isDailyChallengeRef.current = isDailyChallenge; }, [isDailyChallenge]);
+    useEffect(() => { isDailyReplayRef.current = isDailyReplay; }, [isDailyReplay]);
+
     // Load dictionary on mount
     useEffect(() => {
         loadDictionary().then(({ words, trie: loadedTrie }) => {
@@ -61,7 +79,47 @@ export function useGameLogic() {
         }
     }, []);
 
-    // Timer countdown
+    const endGame = useCallback(async (manual: boolean) => {
+        setGameActive(false);
+        setGameWasManual(manual);
+        setShowResults(true);
+
+        // Read all values from refs to avoid stale closures —
+        // refs are always current regardless of when this callback was created.
+        if (isDailyChallengeRef.current && typeof window !== 'undefined') {
+            const userStr = localStorage.getItem('boggle_user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    if (!isDailyReplayRef.current) {
+                        const { submitGameResult } = await import('@/lib/supabase/leaderboard');
+
+                        const scores = calculateTotalScore(foundWordsRef.current, penalizedWordsRef.current);
+                        const gameDuration = GAME_DURATION - timeLeftRef.current;
+
+                        await submitGameResult(user.id, {
+                            grossScore: scores.gross,
+                            penaltyScore: scores.penalty,
+                            netScore: scores.net,
+                            wordsFound: foundWordsRef.current,
+                            wordsPenalized: penalizedWordsRef.current,
+                            totalPossibleWords: allPossibleWordsRef.current.size,
+                            durationSeconds: gameDuration,
+                            boardState: boardRef.current,
+                            isDailyChallenge: true
+                        });
+
+                        setIsDailyReplay(true);
+                        console.log('Score submitted to leaderboard!');
+                    }
+                } catch (error) {
+                    console.error('Failed to submit score:', error);
+                }
+            }
+        }
+    }, []); // stable — reads live values via refs, never needs to be recreated
+
+    // Timer countdown — placed after endGame so the dep below is in scope
     useEffect(() => {
         if (!gameActive || timeLeft <= 0) return;
 
@@ -79,47 +137,7 @@ export function useGameLogic() {
         if (gameActive && timeLeft === 0) {
             endGame(false);
         }
-    }, [gameActive, timeLeft]);
-
-    const endGame = useCallback(async (manual: boolean) => {
-        setGameActive(false);
-        setGameWasManual(manual);
-        setShowResults(true);
-
-        // Submit score if it's a daily challenge and user is logged in
-        if (isDailyChallenge && typeof window !== 'undefined') {
-            const userStr = localStorage.getItem('boggle_user');
-            if (userStr) {
-                try {
-                    const user = JSON.parse(userStr);
-                    // Only submit if this wasn't a replay
-                    if (!isDailyReplay) {
-                        const { submitGameResult } = await import('@/lib/supabase/leaderboard');
-
-                        const scores = calculateTotalScore(foundWords, penalizedWords);
-                        const gameDuration = GAME_DURATION - timeLeft;
-
-                        await submitGameResult(user.id, {
-                            grossScore: scores.gross,
-                            penaltyScore: scores.penalty,
-                            netScore: scores.net,
-                            wordsFound: foundWords,
-                            wordsPenalized: penalizedWords,
-                            totalPossibleWords: allPossibleWords.size,
-                            durationSeconds: gameDuration,
-                            boardState: board,
-                            isDailyChallenge: true
-                        });
-
-                        setIsDailyReplay(true); // Mark as played so UI updates
-                        console.log('Score submitted to leaderboard!');
-                    }
-                } catch (error) {
-                    console.error('Failed to submit score:', error);
-                }
-            }
-        }
-    }, [isDailyChallenge, isDailyReplay, foundWords, penalizedWords, timeLeft, allPossibleWords, board]);
+    }, [gameActive, timeLeft, endGame]);
 
     const startGame = useCallback(async (mode: GameMode = "random") => {
         if (!trie) return;

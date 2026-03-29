@@ -15,6 +15,7 @@ import { GameModeModal } from "@/components/game/GameModeModal";
 import type { GameMode } from "@/components/game/GameModeModal";
 import NoiseOverlay from "@/components/shared/noise-overlay";
 import { getCurrentUser, signOut } from "@/lib/supabase/auth";
+import type { User } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { SiGithub } from "react-icons/si";
@@ -51,7 +52,7 @@ export default function BogglePage() {
   } = useGameLogic();
 
   const [currInput, setCurrInput] = useState("");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
