@@ -1,91 +1,102 @@
-import { supabase } from './client';
-import bcrypt from 'bcryptjs';
+import type { User } from './client';
 
 /**
- * Sign up with username and password
- * Email is optional (for password reset only)
+ * Sign in via server-side API route.
+ * Password comparison happens server-side — password_hash never reaches the browser.
  */
-export async function signUp(username: string, password: string, email?: string, displayName?: string) {
+export async function signIn(
+    username: string,
+    password: string
+): Promise<{ user: User | null; error: string | null }> {
     try {
-        // Hash password
-        const passwordHash = await bcrypt.hash(password, 10);
-
-        // Insert user
-        const { data, error } = await supabase
-            .from('users')
-            .insert([
-                {
-                    username: username.toLowerCase(),
-                    email: email?.toLowerCase(),
-                    password_hash: passwordHash,
-                    display_name: displayName || username,
-                },
-            ])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return { user: data, error: null };
-    } catch (error: any) {
-        return { user: null, error: error.message };
+        const res = await fetch('/api/auth/signin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) return { user: null, error: data.error };
+        return { user: data.user as User, error: null };
+    } catch {
+        return { user: null, error: 'Network error. Please try again.' };
     }
 }
 
 /**
- * Sign in with username and password
+ * Sign up via server-side API route.
+ * Password hashing happens server-side.
  */
-export async function signIn(username: string, password: string) {
+export async function signUp(
+    username: string,
+    password: string,
+    email?: string,
+    displayName?: string
+): Promise<{ user: User | null; error: string | null }> {
     try {
-        // Get user by username
-        const { data: user, error: fetchError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('username', username.toLowerCase())
-            .single();
-
-        if (fetchError || !user) {
-            throw new Error('Invalid username or password');
-        }
-
-        // Verify password
-        const validPassword = await bcrypt.compare(password, user.password_hash);
-        if (!validPassword) {
-            throw new Error('Invalid username or password');
-        }
-
-        // Update last login
-        await supabase
-            .from('users')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', user.id);
-
-        return { user, error: null };
-    } catch (error: any) {
-        return { user: null, error: error.message };
+        const res = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, email: email || undefined, displayName }),
+        });
+        const data = await res.json();
+        if (!res.ok) return { user: null, error: data.error };
+        return { user: data.user as User, error: null };
+    } catch {
+        return { user: null, error: 'Network error. Please try again.' };
     }
 }
 
 /**
- * Sign out (clear local session)
+ * Sign out: clear the httpOnly session cookie and local cache.
  */
-export function signOut() {
+export async function signOut(): Promise<void> {
     localStorage.removeItem('boggle_user');
-    localStorage.removeItem('boggle_session');
+    await fetch('/api/auth/signout', { method: 'POST' }).catch(() => {});
 }
 
 /**
- * Get current user from local storage
+ * Get the current user from the local cache (fast, synchronous).
+ * The cache is set by saveUserSession after a successful auth.
  */
-export function getCurrentUser() {
+export function getCurrentUser(): User | null {
+    if (typeof window === 'undefined') return null;
     const userStr = localStorage.getItem('boggle_user');
     if (!userStr) return null;
-    return JSON.parse(userStr);
+    try {
+        return JSON.parse(userStr) as User;
+    } catch {
+        return null;
+    }
 }
 
 /**
- * Save user session to local storage
+ * Cache non-sensitive user data locally for quick access (no password_hash).
+ * The real session lives in the httpOnly cookie set by the API routes.
  */
-export function saveUserSession(user: any) {
-    localStorage.setItem('boggle_user', JSON.stringify(user));
-    localStorage.setItem('boggle_session', new Date().toISOString());
+export function saveUserSession(user: User): void {
+    const safeUser: User = {
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name,
+        email: user.email,
+        created_at: user.created_at,
+    };
+    localStorage.setItem('boggle_user', JSON.stringify(safeUser));
+}
+
+/**
+ * Send a password reset email for the given username.
+ * Always returns a generic message to prevent username enumeration.
+ */
+export async function forgotPassword(username: string): Promise<{ message: string }> {
+    try {
+        const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+        });
+        return res.json();
+    } catch {
+        return { message: 'If that account has an email address on file, a reset link has been sent.' };
+    }
 }
