@@ -167,37 +167,25 @@ export function useGameLogic() {
         setIsGeneratingBoard(false);
     }, [trie]);
 
-    const startCustomGame = useCallback(() => {
-        if (!trie || board.length === 0) return;
+    // Parses a 16-letter string, calculates all words, and starts the game in one batch.
+    const startCustomGameFromInput = useCallback((input: string): boolean => {
+        if (!trie) return false;
+        const parsed = parseCustomBoard(input);
+        if (!parsed) return false;
 
-        // Use the already loaded custom board
+        const possible = findAllWords(parsed, trie);
+
+        setBoard(parsed);
+        setAllPossibleWords(possible);
         setFoundWords([]);
         setPenalizedWords([]);
         setTimeLeft(GAME_DURATION);
         setGameActive(true);
         setShowResults(false);
         setIsDailyChallenge(false);
-        setStatusMessage(`${allPossibleWords.size} words available`);
-    }, [trie, board, allPossibleWords]);
-
-    const loadCustomBoard = useCallback((input: string) => {
-        const parsed = parseCustomBoard(input);
-        if (!parsed) return false;
-
-        if (trie) {
-            setBoard(parsed);
-            const possible = findAllWords(parsed, trie);
-            setAllPossibleWords(possible);
-            setFoundWords([]);
-            setPenalizedWords([]);
-            setTimeLeft(GAME_DURATION);
-            setGameActive(false);
-            setIsDailyChallenge(false);
-            setIsCustomBoardLoaded(true); // Mark that a custom board is loaded
-            setStatusMessage("Custom board loaded. Press START to play.");
-            return true;
-        }
-        return false;
+        setIsCustomBoardLoaded(false);
+        setStatusMessage(`Custom • ${possible.size} words available`);
+        return true;
     }, [trie]);
 
     const submitWord = useCallback((word: string) => {
@@ -293,16 +281,14 @@ export function useGameLogic() {
         allPossibleWords,
         isDailyChallenge,
         isDailyReplay,
-        isCustomBoardLoaded,
         isGeneratingBoard,
 
         // Actions
         startGame,
-        startCustomGame,
+        startCustomGameFromInput,
         startDailyChallenge,
         endGame,
         submitWord,
         setShowResults,
-        loadCustomBoard
     };
 }

@@ -37,18 +37,15 @@ export default function BogglePage() {
     gameWasManual,
     allPossibleWords,
     isDailyReplay,
-    isCustomBoardLoaded,
-
     isGeneratingBoard,
 
     // Actions
     startGame,
-    startCustomGame,
+    startCustomGameFromInput,
     startDailyChallenge,
     endGame,
     submitWord,
     setShowResults,
-    loadCustomBoard
   } = useGameLogic();
 
   const [currInput, setCurrInput] = useState("");
@@ -60,6 +57,11 @@ export default function BogglePage() {
 
   const handleSelectMode = (mode: GameMode) => {
     startGame(mode);
+    setShowModeModal(false);
+  };
+
+  const handleSelectCustom = (letters: string) => {
+    startCustomGameFromInput(letters);
     setShowModeModal(false);
   };
 
@@ -79,14 +81,6 @@ export default function BogglePage() {
   const handleTileClick = (letter: string) => {
     if (gameActive) {
       setCurrInput((prev) => prev + letter);
-    }
-  };
-
-  const handleCustomBoard = () => {
-    const input = prompt("Enter 16 letters for custom board:");
-    if (input) {
-      const success = loadCustomBoard(input);
-      if (!success) alert("Invalid board input. Must be 16 letters.");
     }
   };
 
@@ -284,9 +278,8 @@ export default function BogglePage() {
 
                 <GameControls
                   gameActive={gameActive}
-                  onStart={isCustomBoardLoaded ? startCustomGame : () => setShowModeModal(true)}
+                  onStart={() => setShowModeModal(true)}
                   onEnd={() => endGame(true)}
-                  onCustomBoard={handleCustomBoard}
                   isLoading={isGeneratingBoard}
                 />
               </div>
@@ -315,6 +308,7 @@ export default function BogglePage() {
             isOpen={showModeModal}
             onClose={() => setShowModeModal(false)}
             onSelectMode={handleSelectMode}
+            onSelectCustom={handleSelectCustom}
             isGenerating={isGeneratingBoard}
           />
         )}

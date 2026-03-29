@@ -1,6 +1,11 @@
 import { supabase } from './client';
 import type { LeaderboardEntry } from './client';
 
+// All daily boundaries reset at Singapore midnight (UTC+8)
+function getSingaporeDate(): string {
+    return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+}
+
 /**
  * Submit a game result to the database
  */
@@ -19,12 +24,14 @@ export async function submitGameResult(
     }
 ) {
     try {
+        const today = getSingaporeDate();
+
         const { data, error } = await supabase
             .from('game_stats')
             .insert([
                 {
                     user_id: userId,
-                    game_date: new Date().toISOString().split('T')[0],
+                    game_date: today,
                     gross_score: gameData.grossScore,
                     penalty_score: gameData.penaltyScore,
                     net_score: gameData.netScore,
@@ -40,6 +47,27 @@ export async function submitGameResult(
             .single();
 
         if (error) throw error;
+
+        // Also write to daily_leaderboard so it appears on the leaderboard
+        if (gameData.isDailyChallenge) {
+            const { error: lbError } = await supabase
+                .from('daily_leaderboard')
+                .upsert(
+                    {
+                        user_id: userId,
+                        challenge_date: today,
+                        gross_score: gameData.grossScore,
+                        net_score: gameData.netScore,
+                        words_found: gameData.wordsFound.length,
+                        completion_time_seconds: gameData.durationSeconds,
+                        rank: 0,
+                    },
+                    { onConflict: 'user_id,challenge_date' }
+                );
+
+            if (lbError) console.error('Failed to write leaderboard entry:', lbError);
+        }
+
         return { data, error: null };
     } catch (error: any) {
         return { data: null, error: error.message };
@@ -51,7 +79,7 @@ export async function submitGameResult(
  */
 export async function hasPlayedDailyToday(userId: string): Promise<boolean> {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getSingaporeDate();
 
         const { count, error } = await supabase
             .from('game_stats')
@@ -73,7 +101,7 @@ export async function hasPlayedDailyToday(userId: string): Promise<boolean> {
  */
 export async function getTodaysLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getSingaporeDate();
 
         const { data, error } = await supabase
             .from('daily_leaderboard')
@@ -106,17 +134,9 @@ export async function getTodaysLeaderboard(limit: number = 50): Promise<Leaderbo
  */
 export async function getUserRankToday(userId: string): Promise<number | null> {
     try {
-        const today = new Date().toISOString().split('T')[0];
-
-        const { data, error } = await supabase
-            .from('daily_leaderboard')
-            .select('rank')
-            .eq('user_id', userId)
-            .eq('challenge_date', today)
-            .single();
-
-        if (error) throw error;
-        return data?.rank || null;
+        const entries = await getTodaysLeaderboard();
+        const idx = entries.findIndex(e => e.user_id === userId);
+        return idx === -1 ? null : idx + 1;
     } catch (error) {
         return null;
     }

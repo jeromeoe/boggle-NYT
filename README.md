@@ -1,9 +1,9 @@
 # Boggle.WEB
 
 A premium word-finding game built with Next.js, TypeScript, and Supabase. Challenge yourself to find as many words as possible in 3 minutes on a 4x4 grid using the official Scrabble dictionary (CSW24). Check out the official webapp here:
-(Vercel Link)
+boggle-nyt.vercel.app
 
-![Boggle.WEB Screenshot](https://via.placeholder.com/800x400?text=Boggle+Screenshot)
+![1774808404623](image/README/1774808404623.png)
 
 ## Features
 
@@ -13,7 +13,7 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 - **Smart Game Engine**: Trie-based solver with 280,000+ word CSW24 dictionary
 - **Fully Responsive**: Beautiful on desktop, tablet, and mobile
 - **Blazing Fast**: Optimized dictionary loading and instant word validation
-- **Coming Soon**: Daily challenges, leaderboards, and multiplayer mode
+- **Coming Soon**: Multiplayer mode
 
 ## Quick Start
 
@@ -25,42 +25,43 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/jeromeoe/boggle-NYT.git
    cd boggle-NYT
    ```
-
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
-
 3. **Set up Supabase**
-   
-   a. Create a new project at [supabase.com](https://supabase.com)
-   
-   b. Run the SQL migrations in order:
-      - Go to SQL Editor in Supabase dashboard
-      - Copy and execute `sql/01_users_schema.sql`
-      - Then `sql/02_rls_policies.sql`
-      - Finally `sql/03_functions.sql`
 
+   a. Create a new project at [supabase.com](https://supabase.com)
+
+   b. Run the SQL migrations in order:
+
+   - Go to SQL Editor in Supabase dashboard
+   - Copy and execute `sql/01_users_schema.sql`
+   - Then `sql/02_rls_policies.sql`
+   - Finally `sql/03_functions.sql`
 4. **Configure environment variables**
+
    ```bash
    cp .env.local.example .env.local
    ```
-   
+
    Edit `.env.local` with your Supabase credentials:
+
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
    ```
-
 5. **Run the development server**
+
    ```bash
    npm run dev
    ```
-
 6. **Open [http://localhost:3000](http://localhost:3000)**
 
 ## How to Play
@@ -68,23 +69,22 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 1. **Start a Game**: Click "Start New Game" to generate a random 4x4 board
 2. **Find Words**: Click tiles or type letters to form words (minimum 3 letters)
 3. **Submit**: Press Enter or click Submit
-4. **Score Points**: 
+4. **Score Points**:
    - Valid words = positive points (longer words = more points)
-   - Invalid words = Scaling Penalty 
+   - Invalid words = Scaling Penalty
    - Duplicates = ignored
 5. **Beat the Clock**: You have 3 minutes to find as many words as possible!
 
 ### Scoring System
 
 | Word Length | Points |
-|------------|--------|
-| 3 letters  | 1      |
-| 4 letters  | 1      |
-| 5 letters  | 2      |
-| 6 letters  | 3      |
-| 7 letters  | 5      |
-| 8+ letters | 11     |
-
+| ----------- | ------ |
+| 3 letters   | 1      |
+| 4 letters   | 1      |
+| 5 letters   | 2      |
+| 6 letters   | 3      |
+| 7 letters   | 5      |
+| 8+ letters  | 7      |
 
 ## Tech Stack
 
@@ -99,7 +99,7 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 
 - **Typography**: Fraunces (serif) for headers, Geist Sans for UI
 - **Colors**: Cream (#F9F7F1), Forest Green (#1A3C34), Gold (#D4AF37)
-- **Motion**: Framer Motion for smooth animations 
+- **Motion**: Framer Motion for smooth animations
 - **Accessibility**: Full keyboard navigation and screen reader support
 
 ## Security
@@ -113,7 +113,7 @@ A premium word-finding game built with Next.js, TypeScript, and Supabase. Challe
 
 MIT License - feel free to use this project for learning or building your own word game!
 
-##  Acknowledgments
+## Acknowledgments
 
 - CSW24 dictionary from [NASPA](https://www.scrabbleplayers.org/)
 - Inspired by NYT Games and classic Boggle
@@ -122,13 +122,14 @@ MIT License - feel free to use this project for learning or building your own wo
 ## Found a Bug?
 
 Please open an issue on GitHub with:
+
 - Steps to reproduce
 - Expected vs actual behavior
 - Screenshots if applicable
 
 ## Roadmap
 
-- [x] Daily Challenge mode (same board for all players)
+- [X] Daily Challenge mode (same board for all players)
 - [ ] Global leaderboards
 - [ ] Statistics dashboard
 - [ ] Social sharing
@@ -137,4 +138,4 @@ Please open an issue on GitHub with:
 
 ---
 
-**Enjoy playing Boggle!** 
+**Enjoy playing Boggle!**
