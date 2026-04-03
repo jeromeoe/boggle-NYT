@@ -4,7 +4,6 @@ import { createHash, randomBytes } from 'crypto';
 import { Resend } from 'resend';
 import { getSupabaseAdmin } from '@/lib/supabase/server-client';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const schema = z.object({ username: z.string().min(1) });
 
 // Always return this — prevents username/email enumeration
@@ -20,6 +19,7 @@ export async function POST(req: NextRequest) {
     const { username } = parsed.data;
 
     const supabaseAdmin = getSupabaseAdmin();
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { data: user } = await supabaseAdmin
         .from('users')
