@@ -4,13 +4,15 @@ Here are some creative directions to take the project, ranging from gameplay mec
 
 ## Big changes
 
-Overall, there are a few parts of this project that could be improved. To begin with, login is currently handled by Supabase. THis is fine for a small project, but the website is starting to gain visibility and more and more users are signing up. This means that the limited email flow is a big problem. Some alternative must be explored to create consistent Logins. I've created an audit of the project as a whole at C:\Users\jerome\.gemini\antigravity\brain\38663409-bfb1-4e80-812b-914c794051c5\project_audit.md.resolved, but please create some implementation plan for the following features, as well as any vulnerabilities and features in the Audit file. 
+Overall, there are a few parts of this project that could be improved. To begin with, login is currently handled by Supabase. THis is fine for a small project, but the website is starting to gain visibility and more and more users are signing up. This means that the limited email flow is a big problem. Some alternative must be explored to create consistent Logins. I've created an audit of the project as a whole at C:\Users\jerome\.gemini\antigravity\brain\38663409-bfb1-4e80-812b-914c794051c5\project_audit.md.resolved, but please create some implementation plan for the following features, as well as any vulnerabilities and features in the Audit file.
 
-1. Logins should be handled better, and there should be a "Forgot Username / Password?" section that sends an email directly to the logged in email. This is important. WE may need to find an alternative to Supabase if necessary -- don't be afraid of that.
-2. There should be different options entirely when selecting "Start New Game". It should open up a popup selecting the TYPE OF GAME -- I trust the implementation up to you but to keep the aesthetics of the website the same. Do take a look at Agent.md for the general practices of this project. Type of games can be found at C:\Users\jerome\Desktop\Projects\Boggle-nyt\boggle-NYT\CREATIVE_IDEAS.md
-3. BUgs found in Project Audit
-4. Currently, the leaderboard resets at a different time from the actual Daily board. Needs investigation.
-5. Start New Game should have a Classic mode with 3 options : Open, Closed, or Random that create boards with certain counts.
+todo boggle:
+
+1. Friends system <— Quick versus, View profile (esp multiplayer stats!)
+2. stats for multiplayer
+3. More meaningful practice
+4. Forced email authentication and phasing out of old users
+
 
 ## ![1774781030872](image/CREATIVE_IDEAS/1774781030872.png)🕹️ Gameplay Variants
 

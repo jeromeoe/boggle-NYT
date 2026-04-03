@@ -12,6 +12,7 @@ import { DailyChallengeBanner } from "@/components/game/DailyChallenge";
 import { LeaderboardModal } from "@/components/game/Leaderboard";
 import { PracticeMode } from "@/components/practice/PracticeMode";
 import { GameModeModal } from "@/components/game/GameModeModal";
+import { MultiplayerView } from "@/components/multiplayer/MultiplayerView";
 import type { GameMode } from "@/components/game/GameModeModal";
 import NoiseOverlay from "@/components/shared/noise-overlay";
 import { getCurrentUser, signOut } from "@/lib/supabase/auth";
@@ -20,7 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { SiGithub } from "react-icons/si";
 import { useState, useEffect } from "react";
-import { TbTrophy, TbUser, TbLogout, TbLogin, TbGridDots, TbBrain } from "react-icons/tb";
+import { TbTrophy, TbUser, TbLogout, TbLogin, TbGridDots, TbBrain, TbUsers } from "react-icons/tb";
 
 export default function BogglePage() {
   const {
@@ -53,7 +54,7 @@ export default function BogglePage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'play' | 'practice'>('play');
+  const [activeTab, setActiveTab] = useState<'play' | 'practice' | 'multiplayer'>('play');
 
   const handleSelectMode = (mode: GameMode) => {
     startGame(mode);
@@ -131,6 +132,20 @@ export default function BogglePage() {
               <TbBrain className="w-4 h-4" />
               <span className="hidden sm:inline">Practice</span>
             </button>
+            <button
+              onClick={() => {
+                if (!user) { setShowAuthModal(true); return; }
+                setActiveTab('multiplayer');
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-sm transition-all ${activeTab === 'multiplayer'
+                ? 'bg-[#1A3C34] text-white'
+                : 'text-[#666] hover:text-[#1A3C34]'
+                }`}
+            >
+              <TbUsers className="w-4 h-4" />
+              <span className="hidden sm:inline">Multiplayer</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-[#D4AF37] text-[#1A3C34] px-1.5 py-0.5 rounded-full leading-none">Beta</span>
+            </button>
           </div>
 
           {/* Desktop score badge - only show in Play mode */}
@@ -192,7 +207,9 @@ export default function BogglePage() {
 
       {/* Main Game Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 z-10">
-        {activeTab === 'practice' ? (
+        {activeTab === 'multiplayer' && user ? (
+          <MultiplayerView user={user} onExit={() => setActiveTab('play')} />
+        ) : activeTab === 'practice' ? (
           <PracticeMode />
         ) : (
           <>

@@ -3,18 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { generateBoard, generateOpenBoard, generateClosedBoard, parseCustomBoard } from "@/lib/boggle/dice";
 import type { GameMode } from "@/components/game/GameModeModal";
-import { loadDictionary } from "@/lib/boggle/trie";
 import { findAllWords } from "@/lib/boggle/solver";
 import { calculateTotalScore } from "@/lib/boggle/scoring";
-import type { Trie } from "@/lib/boggle/trie";
+import { useDictionary } from "@/hooks/useDictionary";
 
 const GAME_DURATION = 180; // 3 minutes
 
 export function useGameLogic() {
-    // Dictionary state
-    const [dictionaryLoaded, setDictionaryLoaded] = useState(false);
-    const [trie, setTrie] = useState<Trie | null>(null);
-    const [validWords, setValidWords] = useState<Set<string>>(new Set());
+    // Dictionary (shared cache via useDictionary)
+    const { trie, validWords, dictionaryLoaded } = useDictionary();
 
     // Game state
     const [board, setBoard] = useState<string[][]>([]);
@@ -52,16 +49,13 @@ export function useGameLogic() {
     useEffect(() => { isDailyChallengeRef.current = isDailyChallenge; }, [isDailyChallenge]);
     useEffect(() => { isDailyReplayRef.current = isDailyReplay; }, [isDailyReplay]);
 
-    // Load dictionary on mount
+    // Set ready message once dictionary loads
     useEffect(() => {
-        loadDictionary().then(({ words, trie: loadedTrie }) => {
-            setValidWords(words);
-            setTrie(loadedTrie);
-            setDictionaryLoaded(true);
-            setStatusMessage("Ready to play!");
-        });
+        if (dictionaryLoaded) setStatusMessage("Ready to play!");
+    }, [dictionaryLoaded]);
 
-        // Check daily status
+    // Check daily status on mount
+    useEffect(() => {
         if (typeof window !== 'undefined') {
             const userStr = localStorage.getItem('boggle_user');
             if (userStr) {
