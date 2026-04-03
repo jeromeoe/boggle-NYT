@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { supabaseAdmin } from '@/lib/supabase/server-client';
+import { getSupabaseAdmin } from '@/lib/supabase/server-client';
 import { signToken, SESSION_COOKIE } from '@/lib/auth/jwt';
 
 const schema = z.object({
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
 
     const { username, password, email, displayName } = parsed.data;
 
+    const supabaseAdmin = getSupabaseAdmin();
     const passwordHash = await bcrypt.hash(password, 10);
 
     const { data: user, error } = await supabaseAdmin

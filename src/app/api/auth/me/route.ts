@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, SESSION_COOKIE } from '@/lib/auth/jwt';
-import { supabaseAdmin } from '@/lib/supabase/server-client';
+import { getSupabaseAdmin } from '@/lib/supabase/server-client';
 
 export async function GET(req: NextRequest) {
     const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
 
     try {
         const payload = await verifyToken(token);
+        const supabaseAdmin = getSupabaseAdmin();
 
         const { data: user } = await supabaseAdmin
             .from('users')

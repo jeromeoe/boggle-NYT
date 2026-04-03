@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { supabaseAdmin } from '@/lib/supabase/server-client';
+import { getSupabaseAdmin } from '@/lib/supabase/server-client';
 
 const schema = z.object({
     token: z.string().min(1),
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { token, newPassword } = parsed.data;
+    const supabaseAdmin = getSupabaseAdmin();
     const tokenHash = createHash('sha256').update(token).digest('hex');
 
     const { data: record } = await supabaseAdmin
