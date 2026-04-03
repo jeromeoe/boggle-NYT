@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/multiplayer/cleanup",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
