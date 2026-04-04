@@ -12,7 +12,7 @@ todo boggle:
 2. stats for multiplayer
 3. More meaningful practice
 4. Forced email authentication and phasing out of old users
-
+5. Admin Login with superpowers
 
 ## ![1774781030872](image/CREATIVE_IDEAS/1774781030872.png)🕹️ Gameplay Variants
 

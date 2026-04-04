@@ -46,92 +46,62 @@ export function PracticeMode() {
     }
 
     if (!currentQuiz) {
+        const difficulties = [
+            { key: 'easy' as const, label: 'Easy', desc: '3 \u2013 8 words', icon: <TbSparkles className="w-5 h-5" /> },
+            { key: 'medium' as const, label: 'Medium', desc: '8 \u2013 15 words', icon: <TbBrain className="w-5 h-5" /> },
+            { key: 'hard' as const, label: 'Hard', desc: '15 \u2013 30 words', icon: <TbFlame className="w-5 h-5" /> },
+            { key: 'mixed' as const, label: 'Mixed', desc: 'Random grids', icon: <TbSparkles className="w-5 h-5" /> },
+        ];
+
         return (
-            <div className="w-full max-w-4xl mx-auto py-12 px-4 space-y-8">
-                <div className="text-center space-y-4">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    >
-                        <TbBrain className="w-20 h-20 mx-auto text-[#1A3C34] mb-4" />
-                    </motion.div>
-                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#1A3C34]">
-                        Practice Mode
-                    </h1>
-                    <p className="text-lg text-[#666] max-w-2xl mx-auto">
-                        Master small words with 2×2 grid challenges. Find all valid word combinations to improve your Boggle skills!
+            <div className="w-full max-w-xl mx-auto pt-16 pb-12 px-4">
+                {/* Header */}
+                <div className="mb-10">
+                    <h1 className="text-3xl font-serif font-bold text-[#1A3C34] tracking-tight">Practice</h1>
+                    <p className="text-sm text-[#8A8A8A] mt-2">
+                        2x2 grids. Find every word. Build your eye for the board.
                     </p>
                 </div>
 
-                {/* Difficulty Selection */}
-                <div className="grid md:grid-cols-4 gap-4 mt-12">
-                    <motion.button
-                        onClick={() => startNewQuiz('easy')}
-                        whileHover={{ scale: 1.05, y: -5 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
-                    >
-                        <TbSparkles className="w-8 h-8 text-green-600 mb-3 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-xl font-serif font-bold text-green-700 mb-1">Easy</h3>
-                        <p className="text-xs text-green-600">3-8 words</p>
-                    </motion.button>
-
-                    <motion.button
-                        onClick={() => startNewQuiz('medium')}
-                        whileHover={{ scale: 1.05, y: -5 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
-                    >
-                        <TbBrain className="w-8 h-8 text-yellow-600 mb-3 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-xl font-serif font-bold text-yellow-700 mb-1">Medium</h3>
-                        <p className="text-xs text-yellow-600">8-15 words</p>
-                    </motion.button>
-
-                    <motion.button
-                        onClick={() => startNewQuiz('hard')}
-                        whileHover={{ scale: 1.05, y: -5 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
-                    >
-                        <TbFlame className="w-8 h-8 text-red-600 mb-3 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-xl font-serif font-bold text-red-700 mb-1">Hard</h3>
-                        <p className="text-xs text-red-600">15-30 words</p>
-                    </motion.button>
-
-                    <motion.button
-                        onClick={() => startNewQuiz('mixed')}
-                        whileHover={{ scale: 1.05, y: -5 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all group"
-                    >
-                        <TbSparkles className="w-8 h-8 text-purple-600 mb-3 group-hover:rotate-12 transition-transform" />
-                        <h3 className="text-xl font-serif font-bold text-purple-700 mb-1">Mixed</h3>
-                        <p className="text-xs text-purple-600">Random Grids</p>
-                    </motion.button>
+                {/* Difficulty cards */}
+                <div className="space-y-3">
+                    {difficulties.map((d, i) => (
+                        <motion.button
+                            key={d.key}
+                            onClick={() => startNewQuiz(d.key)}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all
+                                ${selectedDifficulty === d.key
+                                    ? 'border-[#1A3C34] bg-[#1A3C34] text-[#F9F7F1]'
+                                    : 'border-[#E6E4DD] bg-white text-[#1A3C34] hover:border-[#1A3C34]'
+                                }`}
+                        >
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+                                ${selectedDifficulty === d.key ? 'bg-white/15' : 'bg-[#1A3C34]/5'}`}>
+                                {d.icon}
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-semibold text-sm">{d.label}</div>
+                                <div className={`text-xs ${selectedDifficulty === d.key ? 'text-[#8A9A90]' : 'text-[#8A8A8A]'}`}>
+                                    {d.desc}
+                                </div>
+                            </div>
+                        </motion.button>
+                    ))}
                 </div>
 
-                {/* Tips Section */}
-                <div className="bg-white rounded-2xl p-6 shadow-md border border-[#E6E4DD] mt-12">
-                    <h3 className="text-lg font-serif font-bold text-[#1A3C34] mb-4">💡 Practice Tips</h3>
-                    <ul className="space-y-2 text-sm text-[#666]">
-                        <li className="flex items-start gap-2">
-                            <span className="text-[#D4AF37] mt-1">•</span>
-                            <span>Words must be at least 3 letters long</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-[#D4AF37] mt-1">•</span>
-                            <span>You can move to any adjacent tile (including diagonals)</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-[#D4AF37] mt-1">•</span>
-                            <span>Each tile can only be used once per word</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-[#D4AF37] mt-1">•</span>
-                            <span>{`Use "Reveal" if you're stuck (or press Space)`}</span>
-                        </li>
-                    </ul>
+                {/* Rules — compact, no emoji */}
+                <div className="mt-10 pt-8 border-t border-[#E6E4DD]">
+                    <div className="text-xs font-mono uppercase tracking-widest text-[#8A8A8A] mb-4">How it works</div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm text-[#555]">
+                        <div>Words must be 3+ letters</div>
+                        <div>Adjacent tiles only (incl. diagonals)</div>
+                        <div>Each tile used once per word</div>
+                        <div>Press Space to reveal a word</div>
+                    </div>
                 </div>
             </div>
         );
