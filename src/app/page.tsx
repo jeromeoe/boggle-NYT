@@ -20,7 +20,8 @@ import type { User } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { SiGithub } from "react-icons/si";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { findCandidateTrail } from "@/lib/boggle/pathFinder";
 import { TbTrophy, TbUser, TbLogout, TbLogin, TbGridDots, TbBrain, TbUsers } from "react-icons/tb";
 
 export default function BogglePage() {
@@ -50,6 +51,11 @@ export default function BogglePage() {
   } = useGameLogic();
 
   const [currInput, setCurrInput] = useState("");
+
+  const candidateTrail = useMemo(
+    () => (gameActive && currInput && board.length > 0 ? findCandidateTrail(currInput, board) : undefined),
+    [currInput, board, gameActive]
+  );
   const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -291,6 +297,7 @@ export default function BogglePage() {
                   board={board}
                   onTileClick={handleTileClick}
                   disabled={!gameActive}
+                  candidateTrail={candidateTrail}
                 />
 
                 <GameControls
