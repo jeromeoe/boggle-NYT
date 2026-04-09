@@ -1,24 +1,22 @@
 @import "tailwindcss";
 
-@import "tailwindcss";
-
 :root {
-  /* Intellectual Play - Color Palette */
+  /* Intellectual Play - Light Palette */
   --background: #F9F7F1; /* Warm Cream/Parchment */
   --foreground: #1A1A1A; /* Soft Black */
-  
+
   --primary: #1A3C34; /* Deep Forest Green */
   --primary-foreground: #FFFFFF;
-  
+
   --secondary: #E6E4DD; /* Darker Cream for sub-elements */
   --secondary-foreground: #2A2A2A;
-  
+
   --accent: #D4AF37; /* Muted Gold/Brass */
   --accent-foreground: #1A1A1A;
-  
+
   --muted: #8A8A8A;
   --muted-foreground: #666666;
-  
+
   --border: #E6E4DD;
   --input: #E6E4DD;
   --ring: #1A3C34;
@@ -43,34 +41,31 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  
+
   --font-sans: var(--font-geist-sans);
   --font-serif: var(--font-fraunces);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark Mode - "Midnight Library" */
-    --background: #0C1210; /* Very deep green/black */
-    --foreground: #E6E4DD; /* Parchment white */
-    
-    --primary: #2D4F46; /* Lighter Forest Green */
-    --primary-foreground: #FFFFFF;
-    
-    --secondary: #1A2623;
-    --secondary-foreground: #E6E4DD;
-    
-    --accent: #C5A028;
-    --accent-foreground: #000000;
-    
-    --muted: #4A5550;
-    --muted-foreground: #8A9A90;
-    
-    --border: #1A2623;
-    --input: #1A2623;
-    --ring: #2D4F46;
-  }
+/* Dark mode — "Aged library at midnight" warm graphite palette.
+   Neutral grayscale with a subtle brown/tan undertone so the cream board
+   reads as the brightest, warmest element against it. Gold is the single
+   accent. Three elevation layers (bg → card → elevated). */
+html[data-theme="dark"] {
+  --background: #1C1915;          /* deep warm charcoal — ground floor */
+  --foreground: #EDE8DF;          /* cream off-white */
+  --primary: #2A2520;             /* elevated warm gray — headers, active */
+  --primary-foreground: #EDE8DF;
+  --secondary: #221E19;            /* card surface */
+  --secondary-foreground: #EDE8DF;
+  --accent: #C5A028;               /* gold — single accent */
+  --accent-foreground: #1C1915;
+  --muted: #3A342C;
+  --muted-foreground: #8F887C;
+  --border: #2F2A23;
+  --input: #221E19;
+  --ring: #C5A028;
+  color-scheme: dark;
 }
 
 body {
@@ -85,4 +80,57 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-serif);
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+/* -------------------------------------------------------------------------
+   Dark mode surface overrides
+   Translates hardcoded light-mode Tailwind arbitrary hex classes into the
+   warm-graphite dark palette. Board tiles animate via framer-motion inline
+   styles, so they stay cream/green — the board is the hero.
+   ------------------------------------------------------------------------- */
+html[data-theme="dark"] body {
+  background-color: #1C1915;
+  color: #EDE8DF;
+}
+
+html[data-theme="dark"] ::selection {
+  background-color: rgb(197 160 40 / 0.3);
+}
+
+/* Backgrounds — three elevation layers */
+html[data-theme="dark"] .bg-\[\#F9F7F1\] { background-color: #1C1915; }
+html[data-theme="dark"] .bg-\[\#F9F7F1\]\/80 { background-color: rgb(28 25 21 / 0.8); }
+html[data-theme="dark"] .bg-\[\#F9F7F1\]\/50 { background-color: rgb(28 25 21 / 0.5); }
+html[data-theme="dark"] .bg-white { background-color: #221E19; }
+html[data-theme="dark"] .bg-white\/40 { background-color: rgb(34 30 25 / 0.6); }
+html[data-theme="dark"] .bg-\[\#F0EEE6\] { background-color: #2A2520; }
+html[data-theme="dark"] .bg-\[\#E6E4DD\] { background-color: #2F2A23; }
+
+/* Borders */
+html[data-theme="dark"] .border-\[\#E6E4DD\] { border-color: #2F2A23; }
+html[data-theme="dark"] .border-\[\#F0EEE6\] { border-color: #2F2A23; }
+
+/* Text — neutral warm grays */
+html[data-theme="dark"] .text-\[\#1A1A1A\] { color: #EDE8DF; }
+html[data-theme="dark"] .text-\[\#1A3C34\] { color: #C5A028; }
+html[data-theme="dark"] .text-\[\#666\] { color: #8F887C; }
+html[data-theme="dark"] .text-\[\#8A8A8A\] { color: #6E665C; }
+html[data-theme="dark"] .text-\[\#2A2A2A\] { color: #EDE8DF; }
+
+/* Hover states */
+html[data-theme="dark"] .hover\:bg-\[\#E6E4DD\]:hover { background-color: #2F2A23; }
+html[data-theme="dark"] .hover\:text-\[\#1A3C34\]:hover { color: #C5A028; }
+html[data-theme="dark"] .hover\:border-\[\#1A3C34\]:hover { border-color: #C5A028; }
+
+/* -------------------------------------------------------------------------
+   Reduced motion override — kicks in when the user enables it in Settings
+   or when the OS-level preference is set.
+   ------------------------------------------------------------------------- */
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

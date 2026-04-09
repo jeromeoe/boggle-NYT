@@ -15,6 +15,7 @@ import { GameModeModal } from "@/components/game/GameModeModal";
 import { MultiplayerView } from "@/components/multiplayer/MultiplayerView";
 import type { GameMode } from "@/components/game/GameModeModal";
 import NoiseOverlay from "@/components/shared/noise-overlay";
+import { WhatsNewPopup } from "@/components/shared/WhatsNewPopup";
 import { getCurrentUser, signOut } from "@/lib/supabase/auth";
 import type { User } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,7 +23,8 @@ import Link from "next/link";
 import { SiGithub } from "react-icons/si";
 import { useState, useEffect, useMemo } from "react";
 import { findCandidateTrail } from "@/lib/boggle/pathFinder";
-import { TbTrophy, TbUser, TbLogout, TbLogin, TbGridDots, TbBrain, TbUsers } from "react-icons/tb";
+import { getPathfinderEnabled, PREF_KEYS } from "@/lib/preferences";
+import { TbTrophy, TbUser, TbLogout, TbLogin, TbGridDots, TbBrain, TbUsers, TbSettings } from "react-icons/tb";
 
 export default function BogglePage() {
   const {
@@ -51,10 +53,11 @@ export default function BogglePage() {
   } = useGameLogic();
 
   const [currInput, setCurrInput] = useState("");
+  const [pathfinderEnabled, setPathfinderEnabledState] = useState(true);
 
   const candidateTrail = useMemo(
-    () => (gameActive && currInput && board.length > 0 ? findCandidateTrail(currInput, board) : undefined),
-    [currInput, board, gameActive]
+    () => (pathfinderEnabled && gameActive && currInput && board.length > 0 ? findCandidateTrail(currInput, board) : undefined),
+    [currInput, board, gameActive, pathfinderEnabled]
   );
   const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -76,6 +79,23 @@ export default function BogglePage() {
   useEffect(() => {
     const currentUser = getCurrentUser();
     if (currentUser) setUser(currentUser);
+  }, []);
+
+  // Load pathfinder preference and keep it in sync across tabs / return from /settings
+  useEffect(() => {
+    setPathfinderEnabledState(getPathfinderEnabled());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === PREF_KEYS.pathfinderEnabled) {
+        setPathfinderEnabledState(getPathfinderEnabled());
+      }
+    };
+    const onFocus = () => setPathfinderEnabledState(getPathfinderEnabled());
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   const handleSubmit = () => {
@@ -170,10 +190,22 @@ export default function BogglePage() {
         <div className="flex items-center gap-4">
           {user ? (
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E6E4DD] rounded-lg">
+              <Link
+                href="/settings"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E6E4DD] rounded-lg hover:border-[#1A3C34] transition-colors group"
+                title="Settings"
+              >
                 <TbUser className="w-4 h-4 text-[#1A3C34]" />
                 <span className="text-sm font-semibold text-[#1A3C34]">{user.display_name || user.username}</span>
-              </div>
+                <TbSettings className="w-3.5 h-3.5 text-[#8A8A8A] group-hover:text-[#1A3C34] group-hover:rotate-45 transition-all" />
+              </Link>
+              <Link
+                href="/settings"
+                className="sm:hidden p-2 rounded-full bg-white border border-[#E6E4DD] hover:border-[#1A3C34] text-[#1A3C34] transition-colors"
+                title="Settings"
+              >
+                <TbUser className="w-5 h-5" />
+              </Link>
               <button
                 onClick={handleSignOut}
                 className="p-2 rounded-full hover:bg-[#E6E4DD] text-[#1A3C34] transition-colors"
@@ -369,6 +401,9 @@ export default function BogglePage() {
           />
         )}
       </AnimatePresence>
+
+      {/* One-time "What's new" popup — self-dismissing after first view per update id */}
+      <WhatsNewPopup />
     </div>
   );
 }

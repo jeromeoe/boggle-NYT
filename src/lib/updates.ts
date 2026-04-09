@@ -1,0 +1,54 @@
+/**
+ * "What's New" update notes.
+ *
+ * Bump CURRENT_UPDATE.id whenever there's a new release worth telling
+ * returning users about. The popup compares this against the value in
+ * localStorage under UPDATE_SEEN_KEY — if they differ, it shows once, then
+ * writes the new id and stays quiet until the next bump.
+ *
+ * Rule of thumb: only add an entry for things users will notice. Back-end
+ * refactors, bug fixes, and internal tooling changes should NOT trigger the
+ * popup — the point is to prevent jarring UI changes, not to log a
+ * changelog.
+ */
+
+export interface UpdateNote {
+    title: string;
+    description: string;
+}
+
+export interface Update {
+    /** Stable identifier. Change this to trigger the popup for all users. */
+    id: string;
+    /** Date the update shipped, ISO format (YYYY-MM-DD). Displayed to users. */
+    date: string;
+    /** Headline for the popup. */
+    headline: string;
+    /** 2–4 short bullets, no more. */
+    notes: UpdateNote[];
+}
+
+export const UPDATE_SEEN_KEY = "boggle.update.lastSeen";
+
+export const CURRENT_UPDATE: Update = {
+    id: "2026-04-09-v1",
+    date: "2026-04-09",
+    headline: "Updates",
+    notes: [
+        {
+            title: "Pathfinder",
+            description:
+                "Your word is now traced on the board as you type. If you don't like it, you can turn it off under the new Settings page",
+        },
+        {
+            title: "Dark mode",
+            description:
+                "Change the view settings as you like :-)",
+        },
+        {
+            title: "Settings page",
+            description:
+                "Settings page",
+        },
+    ],
+};
