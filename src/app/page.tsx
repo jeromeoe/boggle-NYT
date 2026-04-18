@@ -13,6 +13,7 @@ import { LeaderboardModal } from "@/components/game/Leaderboard";
 import { PracticeMode } from "@/components/practice/PracticeMode";
 import { GameModeModal } from "@/components/game/GameModeModal";
 import { MultiplayerView } from "@/components/multiplayer/MultiplayerView";
+import { ChallengeNotification } from "@/components/multiplayer/ChallengeNotification";
 import type { GameMode } from "@/components/game/GameModeModal";
 import NoiseOverlay from "@/components/shared/noise-overlay";
 import { WhatsNewPopup } from "@/components/shared/WhatsNewPopup";
@@ -64,6 +65,7 @@ export default function MogglePage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'play' | 'practice' | 'multiplayer'>('play');
+  const [pendingChallengeCode, setPendingChallengeCode] = useState<string | null>(null);
 
   const handleSelectMode = (mode: GameMode) => {
     startGame(mode);
@@ -240,6 +242,17 @@ export default function MogglePage() {
         </div>
       </header>
 
+      {/* Challenge invite toast — always mounted so the Realtime subscription survives tab switches */}
+      {user && (
+        <ChallengeNotification
+          user={user}
+          onAccept={(code) => {
+            setPendingChallengeCode(code);
+            setActiveTab('multiplayer');
+          }}
+        />
+      )}
+
       {/* Main Game Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 z-10">
         {activeTab === 'multiplayer' ? (
@@ -247,6 +260,8 @@ export default function MogglePage() {
             user={user!}
             onExit={() => setActiveTab('play')}
             onSignInClick={() => setShowAuthModal(true)}
+            pendingJoinCode={pendingChallengeCode}
+            onPendingJoinConsumed={() => setPendingChallengeCode(null)}
           />
         ) : activeTab === 'practice' ? (
           <PracticeMode />

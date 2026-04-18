@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TbUserPlus, TbCheck, TbX, TbUserCircle } from "react-icons/tb";
+import { TbUserPlus, TbCheck, TbX, TbUserCircle, TbSwords, TbLoader2 } from "react-icons/tb";
 import type { User } from "@/lib/supabase/client";
 
 interface Friend {
@@ -23,9 +23,10 @@ interface PendingRequest {
 interface FriendsPanelProps {
     user: User | null;
     onSignInClick: () => void;
+    onChallenge?: (friendUserId: string, displayName: string | null, username: string) => Promise<void>;
 }
 
-export function FriendsPanel({ user, onSignInClick }: FriendsPanelProps) {
+export function FriendsPanel({ user, onSignInClick, onChallenge }: FriendsPanelProps) {
     const [friends, setFriends] = useState<Friend[]>([]);
     const [pending, setPending] = useState<PendingRequest[]>([]);
     const [addUsername, setAddUsername] = useState("");
@@ -33,6 +34,7 @@ export function FriendsPanel({ user, onSignInClick }: FriendsPanelProps) {
     const [addMsg, setAddMsg] = useState("");
     const [showAdd, setShowAdd] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [challengingId, setChallengingId] = useState<string | null>(null);
 
     const fetchFriends = useCallback(async () => {
         if (!user) return;
@@ -90,6 +92,16 @@ export function FriendsPanel({ user, onSignInClick }: FriendsPanelProps) {
             body: JSON.stringify({ friendship_id, action }),
         });
         fetchFriends();
+    };
+
+    const handleChallenge = async (f: Friend) => {
+        if (!onChallenge || challengingId) return;
+        setChallengingId(f.user_id);
+        try {
+            await onChallenge(f.user_id, f.display_name, f.username);
+        } finally {
+            setChallengingId(null);
+        }
     };
 
     if (!user) {
@@ -213,13 +225,27 @@ export function FriendsPanel({ user, onSignInClick }: FriendsPanelProps) {
                         {online.length > 0 && (
                             <>
                                 <p className="px-4 pt-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-[#8A9A90]">Online</p>
-                                {online.map(f => <FriendRow key={f.user_id} friend={f} />)}
+                                {online.map(f => (
+                                    <FriendRow
+                                        key={f.user_id}
+                                        friend={f}
+                                        onChallenge={onChallenge ? () => handleChallenge(f) : undefined}
+                                        isChallenging={challengingId === f.user_id}
+                                    />
+                                ))}
                             </>
                         )}
                         {offline.length > 0 && (
                             <>
                                 <p className="px-4 pt-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-[#8A9A90]">Offline</p>
-                                {offline.map(f => <FriendRow key={f.user_id} friend={f} />)}
+                                {offline.map(f => (
+                                    <FriendRow
+                                        key={f.user_id}
+                                        friend={f}
+                                        onChallenge={onChallenge ? () => handleChallenge(f) : undefined}
+                                        isChallenging={challengingId === f.user_id}
+                                    />
+                                ))}
                             </>
                         )}
                     </>
@@ -229,12 +255,16 @@ export function FriendsPanel({ user, onSignInClick }: FriendsPanelProps) {
     );
 }
 
-function FriendRow({ friend }: { friend: Friend }) {
+function FriendRow({ friend, onChallenge, isChallenging }: {
+    friend: Friend;
+    onChallenge?: () => void;
+    isChallenging?: boolean;
+}) {
     return (
         <motion.div
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F0EEE8] transition-colors"
+            className="group flex items-center gap-3 px-4 py-2.5 hover:bg-[#F0EEE8] transition-colors"
         >
             {/* Avatar + online dot */}
             <div className="relative flex-shrink-0">
@@ -258,6 +288,21 @@ function FriendRow({ friend }: { friend: Friend }) {
                 </div>
                 <p className="text-xs text-[#8A9A90] truncate">@{friend.username}</p>
             </div>
+
+            {/* Challenge button — visible on hover */}
+            {onChallenge && (
+                <button
+                    onClick={onChallenge}
+                    disabled={isChallenging}
+                    title="Quick challenge"
+                    className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1.5 rounded-lg bg-[#1A3C34] text-[#F9F7F1] hover:bg-[#D4AF37] hover:text-[#1A3C34] transition-all disabled:opacity-50"
+                >
+                    {isChallenging
+                        ? <TbLoader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <TbSwords className="w-3.5 h-3.5" />
+                    }
+                </button>
+            )}
         </motion.div>
     );
 }

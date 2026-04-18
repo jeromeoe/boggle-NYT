@@ -24,53 +24,18 @@ export async function submitGameResult(
     }
 ) {
     try {
-        const today = getSingaporeDate();
-
-        const { data, error } = await supabase
-            .from('game_stats')
-            .insert([
-                {
-                    user_id: userId,
-                    game_date: today,
-                    gross_score: gameData.grossScore,
-                    penalty_score: gameData.penaltyScore,
-                    net_score: gameData.netScore,
-                    words_found: gameData.wordsFound,
-                    words_penalized: gameData.wordsPenalized,
-                    total_possible_words: gameData.totalPossibleWords,
-                    duration_seconds: gameData.durationSeconds,
-                    board_state: gameData.boardState,
-                    is_daily_challenge: gameData.isDailyChallenge,
-                },
-            ])
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        // Also write to daily_leaderboard so it appears on the leaderboard
-        if (gameData.isDailyChallenge) {
-            const { error: lbError } = await supabase
-                .from('daily_leaderboard')
-                .upsert(
-                    {
-                        user_id: userId,
-                        challenge_date: today,
-                        gross_score: gameData.grossScore,
-                        net_score: gameData.netScore,
-                        words_found: gameData.wordsFound.length,
-                        completion_time_seconds: gameData.durationSeconds,
-                        rank: 0,
-                    },
-                    { onConflict: 'user_id,challenge_date' }
-                );
-
-            if (lbError) console.error('Failed to write leaderboard entry:', lbError);
+        const res = await fetch('/api/game/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(gameData),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(err.error);
         }
-
-        return { data, error: null };
-    } catch (error: any) {
-        return { data: null, error: error.message };
+        return { data: await res.json(), error: null };
+    } catch (error: unknown) {
+        return { data: null, error: (error as Error).message };
     }
 }
 
@@ -97,27 +62,21 @@ export async function hasPlayedDailyToday(userId: string): Promise<boolean> {
 }
 
 /**
- * Get today's daily challenge leaderboard
+ * Get leaderboard for a specific date (YYYY-MM-DD in Singapore time)
  */
-export async function getTodaysLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
+export async function getLeaderboardForDate(date: string, limit: number = 50): Promise<LeaderboardEntry[]> {
     try {
-        const today = getSingaporeDate();
-
         const { data, error } = await supabase
             .from('daily_leaderboard')
-            .select(`
-        *,
-        users!inner(username, display_name)
-      `)
-            .eq('challenge_date', today)
+            .select(`*, users!inner(username, display_name)`)
+            .eq('challenge_date', date)
             .order('net_score', { ascending: false })
             .order('completion_time_seconds', { ascending: true })
             .limit(limit);
 
         if (error) throw error;
 
-        // Transform data to include username
-        return (data || []).map((entry: any, index) => ({
+        return (data || []).map((entry: any, index: number) => ({
             ...entry,
             rank: index + 1,
             username: entry.users.username,
@@ -130,16 +89,35 @@ export async function getTodaysLeaderboard(limit: number = 50): Promise<Leaderbo
 }
 
 /**
- * Get user's rank for today's daily challenge
+ * Get today's daily challenge leaderboard
  */
-export async function getUserRankToday(userId: string): Promise<number | null> {
+export async function getTodaysLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
+    return getLeaderboardForDate(getSingaporeDate(), limit);
+}
+
+/**
+ * Get user's rank for a given date's leaderboard
+ */
+export async function getUserRankForDate(userId: string, date: string): Promise<number | null> {
     try {
-        const entries = await getTodaysLeaderboard();
+        const entries = await getLeaderboardForDate(date);
         const idx = entries.findIndex(e => e.user_id === userId);
         return idx === -1 ? null : idx + 1;
-    } catch (error) {
+    } catch {
         return null;
     }
+}
+
+export async function getUserRankToday(userId: string): Promise<number | null> {
+    return getUserRankForDate(userId, getSingaporeDate());
+}
+
+/** Returns the last N Singapore-date strings including today, newest first */
+export function getRecentDates(days: number): string[] {
+    return Array.from({ length: days }, (_, i) => {
+        const d = new Date(Date.now() + 8 * 60 * 60 * 1000 - i * 86_400_000);
+        return d.toISOString().split('T')[0];
+    });
 }
 
 /**

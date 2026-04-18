@@ -22,9 +22,11 @@ interface Props {
     user: User | null;
     onExit: () => void;
     onSignInClick: () => void;
+    pendingJoinCode?: string | null;
+    onPendingJoinConsumed?: () => void;
 }
 
-export function MultiplayerView({ user, onExit, onSignInClick }: Props) {
+export function MultiplayerView({ user, onExit, onSignInClick, pendingJoinCode, onPendingJoinConsumed }: Props) {
     const { trie, dictionaryLoaded } = useDictionary();
     const [currInput, setCurrInput] = useState("");
     const [board, setBoard] = useState<string[][]>([]);
@@ -68,6 +70,14 @@ export function MultiplayerView({ user, onExit, onSignInClick }: Props) {
         onGameEnd: handleGameEnd,
     });
 
+    // Auto-join when arriving via a challenge invite
+    useEffect(() => {
+        if (pendingJoinCode && phase === 'idle') {
+            joinRoom(pendingJoinCode);
+            onPendingJoinConsumed?.();
+        }
+    }, [pendingJoinCode, phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // When the room status becomes 'playing', generate the board from seed
     useEffect(() => {
         if (phase === 'playing' && room?.board_seed && trie && dictionaryLoaded) {
@@ -100,6 +110,19 @@ export function MultiplayerView({ user, onExit, onSignInClick }: Props) {
         await joinRoom(code);
     };
 
+    const handleChallengeFriend = async (friendUserId: string, friendDisplayName: string | null, friendUsername: string) => {
+        const res = await fetch('/api/multiplayer/challenge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_user_id: friendUserId }),
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        // Invite is delivered via postgres_changes INSERT on challenge_invites (server-side, no extra channel)
+        await joinRoom(data.room_code);
+    };
+
     const handleLeave = () => {
         leaveRoom();
         setBoard([]);
@@ -115,6 +138,7 @@ export function MultiplayerView({ user, onExit, onSignInClick }: Props) {
                 user={user}
                 onCreateRoom={handleCreate}
                 onJoinRoom={handleJoin}
+                onChallengeFriend={handleChallengeFriend}
                 onSignInClick={onSignInClick}
                 isLoading={isLoading}
                 error={error}

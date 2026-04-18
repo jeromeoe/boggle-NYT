@@ -10,12 +10,13 @@ interface Props {
     user: User | null;
     onCreateRoom: () => Promise<void>;
     onJoinRoom: (code: string) => Promise<void>;
+    onChallengeFriend: (friendUserId: string, displayName: string | null, username: string) => Promise<void>;
     onSignInClick: () => void;
     isLoading: boolean;
     error: string | null;
 }
 
-export function MultiplayerLanding({ user, onCreateRoom, onJoinRoom, onSignInClick, isLoading, error }: Props) {
+export function MultiplayerLanding({ user, onCreateRoom, onJoinRoom, onChallengeFriend, onSignInClick, isLoading, error }: Props) {
     const [joinView, setJoinView] = useState(false);
     const [code, setCode] = useState(["", "", "", ""]);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
@@ -172,7 +173,7 @@ export function MultiplayerLanding({ user, onCreateRoom, onJoinRoom, onSignInCli
             {/* Right: Friends panel */}
             <div className="lg:col-span-2">
                 <div className="bg-white border border-[#E6E4DD] rounded-2xl overflow-hidden h-full min-h-[400px] flex flex-col">
-                    <FriendsPanel user={user} onSignInClick={onSignInClick} />
+                    <FriendsPanel user={user} onSignInClick={onSignInClick} onChallenge={(id, dn, un) => onChallengeFriend(id, dn, un)} />
                 </div>
             </div>
         </div>

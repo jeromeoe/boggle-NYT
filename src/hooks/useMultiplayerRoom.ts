@@ -183,10 +183,10 @@ export function useMultiplayerRoom(myUserId: string | null) {
 
         channelRef.current = channel;
 
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve) => {
             channel.subscribe((status) => {
                 if (status === 'SUBSCRIBED') resolve();
-                else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(`Channel ${status}`));
+                // TIMED_OUT and CHANNEL_ERROR are retried automatically by the SDK — do not reject
             });
         });
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
