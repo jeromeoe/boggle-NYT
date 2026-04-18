@@ -20,7 +20,7 @@ export function LeaderboardModal({ isOpen, onClose, userId }: LeaderboardModalPr
     const loadLeaderboard = async () => {
         setLoading(true);
         try {
-            const data = await getTodaysLeaderboard(50);
+            const data = await getTodaysLeaderboard(10);
             setEntries(data);
 
             if (userId) {
@@ -201,7 +201,7 @@ export function LeaderboardModal({ isOpen, onClose, userId }: LeaderboardModalPr
                         {/* Footer */}
                         <div className="p-4 border-t border-[#E6E4DD] bg-[#F9F7F1]">
                             <div className="text-center text-xs text-[#8A8A8A]">
-                                Showing top {entries.length} players
+                                Top 10
                             </div>
                         </div>
                     </motion.div>

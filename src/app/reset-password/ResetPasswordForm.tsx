@@ -59,7 +59,7 @@ export function ResetPasswordForm() {
                 <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] p-6 text-center relative">
                     <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
                     <div className="text-xl font-serif font-bold text-[#F9F7F1] tracking-tighter mb-1">
-                        BOGGLE<span className="text-[#D4AF37]">.WEB</span>
+                        MOGGLE<span className="text-[#D4AF37]">.ORG</span>
                     </div>
                     <h1 className="text-2xl font-serif font-bold text-[#F9F7F1]">Set New Password</h1>
                 </div>

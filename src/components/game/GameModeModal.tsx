@@ -51,7 +51,7 @@ const COMING_SOON = [
         icon: TbBolt,
     },
     {
-        label: "Big Boggle",
+        label: "Big Board",
         description: "5×5 grid, longer words, higher scores.",
         icon: TbGridDots,
     },
@@ -145,7 +145,7 @@ export function GameModeModal({
                                 )}
                                 <div>
                                     <p className="text-[10px] font-mono text-[#8A9A90] uppercase tracking-widest">
-                                        {view === "modes" ? "Classic Boggle" : "Custom Board"}
+                                        {view === "modes" ? "Classic Mode" : "Custom Board"}
                                     </p>
                                     <h2 className="text-xl font-serif font-bold text-[#F9F7F1]">
                                         {view === "modes" ? "Choose Board Type" : "Enter Your Letters"}

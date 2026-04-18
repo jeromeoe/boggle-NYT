@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { MultiplayerRoom, MultiplayerPlayer, SubmitPayload, MultiplayerBroadcastEvent } from "@/lib/multiplayer/types";
 
-export type MultiplayerPhase = "idle" | "lobby" | "playing" | "results";
+export type MultiplayerPhase = "idle" | "lobby" | "countdown" | "playing" | "results";
 
 const GAME_DURATION = 180;
 
@@ -14,6 +14,7 @@ interface State {
     phase: MultiplayerPhase;
     wordCounts: Record<string, number>;
     timeLeft: number;
+    countdown: number | null;  // 3, 2, 1, null
     error: string | null;
     isLoading: boolean;
 }
@@ -25,20 +26,42 @@ export function useMultiplayerRoom(myUserId: string | null) {
         phase: "idle",
         wordCounts: {},
         timeLeft: GAME_DURATION,
+        countdown: null,
         error: null,
         isLoading: false,
     });
 
     const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const lobbyPollRef = useRef<NodeJS.Timeout | null>(null);
     const startTimeMsRef = useRef<number | null>(null);
     const lastBroadcastRef = useRef(0);
     const onTimerExpiredRef = useRef<(() => void) | null>(null);
+    const currentRoomIdRef = useRef<string | null>(null);
 
     const setError = (error: string) => setState(s => ({ ...s, error, isLoading: false }));
 
+    const runCountdown = useCallback((onDone: () => void) => {
+        if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+        setState(s => ({ ...s, phase: 'countdown', countdown: 3 }));
+        let tick = 3;
+        countdownTimerRef.current = setInterval(() => {
+            tick -= 1;
+            if (tick <= 0) {
+                clearInterval(countdownTimerRef.current!);
+                countdownTimerRef.current = null;
+                setState(s => ({ ...s, countdown: null }));
+                onDone();
+            } else {
+                setState(s => ({ ...s, countdown: tick }));
+            }
+        }, 1000);
+    }, []);
+
     // ── Subscribe to room + player changes via Realtime ──────────────────────
-    const subscribe = useCallback((roomId: string, roomCode: string) => {
+    // Returns a Promise that resolves once the channel is confirmed SUBSCRIBED.
+    const subscribe = useCallback((roomId: string, roomCode: string): Promise<void> => {
         // Clean up any existing subscription
         if (channelRef.current) {
             supabase.removeChannel(channelRef.current);
@@ -56,18 +79,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
             if (payload.type !== 'player_joined') return;
             setState(s => {
                 if (s.players.some(p => p.user_id === payload.player.user_id)) return s;
-                return {
-                    ...s,
-                    players: [...s.players, {
-                        id: '', room_id: roomId,
-                        user_id: payload.player.user_id,
-                        username: payload.player.username,
-                        display_name: payload.player.display_name,
-                        joined_at: new Date().toISOString(),
-                        finished_at: null, gross_score: null, penalty_score: null,
-                        net_score: null, words_found: null, words_penalized: null, is_dnf: false,
-                    }],
-                };
+                return { ...s, players: [...s.players, payload.player] };
             });
         });
 
@@ -79,14 +91,38 @@ export function useMultiplayerRoom(myUserId: string | null) {
             }));
         });
 
-        // game_started: broadcast by host after /api/multiplayer/start succeeds
-        // This is the PRIMARY mechanism for all clients to transition to playing.
+        // countdown_started: host clicked Start — show 3-2-1 on all clients
+        channel.on('broadcast', { event: 'countdown_started' }, () => {
+            runCountdown(() => {/* game_started broadcast will follow */});
+        });
+
+        // room_reset: host clicked Play Again — go back to lobby, clear scores
+        channel.on('broadcast', { event: 'room_reset' }, () => {
+            setState(s => ({
+                ...s,
+                phase: 'lobby',
+                countdown: null,
+                wordCounts: {},
+                timeLeft: GAME_DURATION,
+                players: s.players.map(p => ({
+                    ...p,
+                    gross_score: null, penalty_score: null, net_score: null,
+                    words_found: null, words_penalized: null,
+                    finished_at: null, is_dnf: false,
+                })),
+                room: s.room ? { ...s.room, status: 'waiting', board_seed: null, start_time: null, finished_at: null } : s.room,
+            }));
+        });
+
+        // game_started: fires after countdown completes
         channel.on('broadcast', { event: 'game_started' }, ({ payload }: { payload: { board_seed: number; start_time: string } }) => {
+            if (lobbyPollRef.current) { clearInterval(lobbyPollRef.current); lobbyPollRef.current = null; }
             startTimeMsRef.current = new Date(payload.start_time).getTime();
             setState(s => ({
                 ...s,
                 room: s.room ? { ...s.room, status: 'playing', board_seed: payload.board_seed, start_time: payload.start_time } : s.room,
                 phase: 'playing',
+                countdown: null,
             }));
             startTimer();
         });
@@ -145,10 +181,36 @@ export function useMultiplayerRoom(myUserId: string | null) {
             }));
         });
 
-        channel.subscribe();
-
         channelRef.current = channel;
+
+        return new Promise<void>((resolve, reject) => {
+            channel.subscribe((status) => {
+                if (status === 'SUBSCRIBED') resolve();
+                else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(`Channel ${status}`));
+            });
+        });
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Poll the DB for latest player list while in lobby — safety net if Realtime misses a broadcast
+    const startLobbyPoll = useCallback((roomId: string) => {
+        if (lobbyPollRef.current) clearInterval(lobbyPollRef.current);
+        lobbyPollRef.current = setInterval(async () => {
+            const { data } = await supabase
+                .from('multiplayer_players')
+                .select('*')
+                .eq('room_id', roomId);
+            if (data && data.length > 0) {
+                setState(s => {
+                    if (s.phase !== 'lobby') { clearInterval(lobbyPollRef.current!); lobbyPollRef.current = null; return s; }
+                    // Merge: add any players not yet in state
+                    const existing = new Set(s.players.map(p => p.user_id));
+                    const newPlayers = data.filter((p: MultiplayerPlayer) => !existing.has(p.user_id));
+                    if (newPlayers.length === 0) return s;
+                    return { ...s, players: [...s.players, ...newPlayers] };
+                });
+            }
+        }, 3000);
+    }, []);
 
     const startTimer = useCallback(() => {
         stopTimer();
@@ -177,6 +239,8 @@ export function useMultiplayerRoom(myUserId: string | null) {
     useEffect(() => {
         return () => {
             stopTimer();
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+            if (lobbyPollRef.current) clearInterval(lobbyPollRef.current);
             if (channelRef.current) supabase.removeChannel(channelRef.current);
         };
     }, []);
@@ -206,9 +270,11 @@ export function useMultiplayerRoom(myUserId: string | null) {
             created_at: new Date().toISOString(),
             finished_at: null,
         };
+        currentRoomIdRef.current = data.room_id;
         setState(s => ({ ...s, room, players: data.players, phase: 'lobby', isLoading: false }));
-        subscribe(data.room_id, data.room_code);
-    }, [myUserId, subscribe]);
+        await subscribe(data.room_id, data.room_code);
+        startLobbyPoll(data.room_id);
+    }, [myUserId, subscribe, startLobbyPoll]);
 
     const joinRoom = useCallback(async (code: string) => {
         if (!myUserId) { setError('You must be signed in'); return; }
@@ -233,50 +299,91 @@ export function useMultiplayerRoom(myUserId: string | null) {
             created_at: new Date().toISOString(),
             finished_at: null,
         };
+        currentRoomIdRef.current = data.room_id;
         setState(s => ({ ...s, room, players: data.players, phase: 'lobby', isLoading: false }));
-        subscribe(data.room_id, data.room_code);
 
-        // Announce arrival to other clients in the lobby
-        channelRef.current?.send({
-            type: 'broadcast',
-            event: 'player_joined',
-            payload: {
-                type: 'player_joined',
-                player: { user_id: myUserId, username: data.players.find((p: MultiplayerPlayer) => p.user_id === myUserId)?.username ?? '', display_name: null },
-            } satisfies MultiplayerBroadcastEvent,
-        });
-    }, [myUserId, subscribe]);
+        // Wait for channel to be fully subscribed BEFORE broadcasting —
+        // sending before SUBSCRIBED means the message is dropped silently.
+        await subscribe(data.room_id, data.room_code);
+        startLobbyPoll(data.room_id);
+
+        // Broadcast the full player record so the host gets all fields, not just a partial
+        const me = (data.players as MultiplayerPlayer[]).find(p => p.user_id === myUserId);
+        if (me) {
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'player_joined',
+                payload: { type: 'player_joined', player: me } satisfies MultiplayerBroadcastEvent,
+            });
+        }
+    }, [myUserId, subscribe, startLobbyPoll]);
 
     const startGame = useCallback(async () => {
         if (!state.room) return;
         setState(s => ({ ...s, isLoading: true, error: null }));
 
-        const res = await fetch('/api/multiplayer/start', {
+        // Broadcast countdown to all clients (including host), then start after 3s
+        channelRef.current?.send({ type: 'broadcast', event: 'countdown_started', payload: { type: 'countdown_started' } });
+        runCountdown(async () => {
+            const res = await fetch('/api/multiplayer/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: state.room!.id }),
+            });
+            const data = await res.json();
+            if (!res.ok) { setError(data.error ?? 'Failed to start game'); return; }
+
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'game_started',
+                payload: { board_seed: data.board_seed, start_time: data.start_time },
+            });
+
+            if (lobbyPollRef.current) { clearInterval(lobbyPollRef.current); lobbyPollRef.current = null; }
+            startTimeMsRef.current = new Date(data.start_time).getTime();
+            setState(s => ({
+                ...s,
+                isLoading: false,
+                room: s.room ? { ...s.room, status: 'playing', board_seed: data.board_seed, start_time: data.start_time } : s.room,
+                phase: 'playing',
+                countdown: null,
+            }));
+            startTimer();
+        });
+    }, [state.room, startTimer, runCountdown]);
+
+    const resetRoom = useCallback(async () => {
+        if (!state.room) return;
+        setState(s => ({ ...s, isLoading: true, error: null }));
+
+        const res = await fetch('/api/multiplayer/reset', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ room_id: state.room.id }),
         });
-        const data = await res.json();
-        if (!res.ok) { setError(data.error ?? 'Failed to start game'); return; }
+        if (!res.ok) { setError('Failed to reset room'); return; }
 
-        // Broadcast game_started to ALL clients (including self) via the channel.
-        // This is the reliable path — postgres_changes can be flaky.
-        channelRef.current?.send({
-            type: 'broadcast',
-            event: 'game_started',
-            payload: { board_seed: data.board_seed, start_time: data.start_time },
-        });
+        // Broadcast reset to all clients so they return to lobby
+        channelRef.current?.send({ type: 'broadcast', event: 'room_reset', payload: { type: 'room_reset' } });
 
-        // Also transition the host immediately (don't wait for broadcast round-trip)
-        startTimeMsRef.current = new Date(data.start_time).getTime();
+        // Host transitions immediately
         setState(s => ({
             ...s,
             isLoading: false,
-            room: s.room ? { ...s.room, status: 'playing', board_seed: data.board_seed, start_time: data.start_time } : s.room,
-            phase: 'playing',
+            phase: 'lobby',
+            countdown: null,
+            wordCounts: {},
+            timeLeft: GAME_DURATION,
+            players: s.players.map(p => ({
+                ...p,
+                gross_score: null, penalty_score: null, net_score: null,
+                words_found: null, words_penalized: null,
+                finished_at: null, is_dnf: false,
+            })),
+            room: s.room ? { ...s.room, status: 'waiting', board_seed: null, start_time: null, finished_at: null } : s.room,
         }));
-        startTimer();
-    }, [state.room, startTimer]);
+        if (currentRoomIdRef.current) startLobbyPoll(currentRoomIdRef.current);
+    }, [state.room, startLobbyPoll]);
 
     const submitResult = useCallback(async (payload: SubmitPayload) => {
         const res = await fetch('/api/multiplayer/submit', {
@@ -301,6 +408,8 @@ export function useMultiplayerRoom(myUserId: string | null) {
 
     const leaveRoom = useCallback(() => {
         stopTimer();
+        if (lobbyPollRef.current) { clearInterval(lobbyPollRef.current); lobbyPollRef.current = null; }
+        currentRoomIdRef.current = null;
 
         // Tell the server to destroy (if host) or remove player (if guest)
         if (state.room?.id) {
@@ -320,7 +429,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
-        setState({ room: null, players: [], phase: 'idle', wordCounts: {}, timeLeft: GAME_DURATION, error: null, isLoading: false });
+        setState({ room: null, players: [], phase: 'idle', wordCounts: {}, timeLeft: GAME_DURATION, countdown: null, error: null, isLoading: false });
     }, [myUserId, state.room?.id]);
 
     return {
@@ -328,6 +437,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
         createRoom,
         joinRoom,
         startGame,
+        resetRoom,
         submitResult,
         broadcastWordCount,
         leaveRoom,

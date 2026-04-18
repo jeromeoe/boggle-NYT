@@ -21,8 +21,34 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Boggle Web",
-  description: "A premium, standalone word game experience.",
+  title: "Moggle.org — Free Online Word Game",
+  description:
+    "Moggle.org is a free online word game — find as many words as possible on the letter grid before time runs out. A fun alternative to Boggle, Scrabble, word search, and crossword puzzles.",
+  keywords: [
+    "word game",
+    "online word game",
+    "boggl",
+    "scrabbl",
+    "word search",
+    "crossword",
+    "letter grid game",
+    "vocabulary game",
+    "word puzzle",
+    "moggle",
+  ],
+  openGraph: {
+    title: "Moggle.org — Free Online Word Game",
+    description:
+      "Find words in the letter grid — a competitive word game inspired by classics like Boggle and Scrabble. Play free online.",
+    siteName: "Moggle.org",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Moggle.org — Free Online Word Game",
+    description:
+      "Find words in the letter grid — a competitive word game inspired by classics like Boggle and Scrabble.",
+  },
 };
 
 // Inlined so the theme is applied before the first paint — otherwise

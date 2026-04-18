@@ -252,7 +252,7 @@ export function useGameLogic() {
             setTimeLeft(GAME_DURATION);
             setGameActive(true);
             setShowResults(false);
-            setStatusMessage(`Daily Boggle • ${possible.size} words available`);
+            setStatusMessage(`Daily Challenge • ${possible.size} words available`);
         } catch (error) {
             console.error("Failed to load daily challenge:", error);
             setStatusMessage("Error loading daily challenge");

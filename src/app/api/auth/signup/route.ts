@@ -45,6 +45,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
     }
 
+    // Seed rating + presence for new user (fire-and-forget)
+    supabaseAdmin.from('user_ratings').insert({ user_id: user.id, rating: 800, peak: 800, games: 0 });
+    supabaseAdmin.from('friend_presence').insert({ user_id: user.id, last_seen_at: new Date().toISOString() });
+
     const token = await signToken({
         sub: user.id,
         username: user.username,

@@ -20,13 +20,13 @@ import { getCurrentUser, signOut } from "@/lib/supabase/auth";
 import type { User } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { SiGithub } from "react-icons/si";
+import { SiLinkedin } from "react-icons/si";
 import { useState, useEffect, useMemo } from "react";
 import { findCandidateTrail } from "@/lib/boggle/pathFinder";
 import { getPathfinderEnabled, PREF_KEYS } from "@/lib/preferences";
 import { TbTrophy, TbUser, TbLogout, TbLogin, TbGridDots, TbBrain, TbUsers, TbSettings } from "react-icons/tb";
 
-export default function BogglePage() {
+export default function MogglePage() {
   const {
     // State
     dictionaryLoaded,
@@ -133,7 +133,7 @@ export default function BogglePage() {
       <header className="w-full px-6 py-4 flex justify-between items-center z-10 border-b border-[#E6E4DD] bg-[#F9F7F1]/80 backdrop-blur-sm">
         <div className="flex items-center gap-8">
           <div className="text-xl font-serif font-bold tracking-tighter text-[#1A3C34]">
-            BOGGLE<span className="text-[#D4AF37]">.WEB</span>
+            MOGGLE<span className="text-[#D4AF37]">.ORG</span>
           </div>
 
           {/* Tab Navigation */}
@@ -159,10 +159,7 @@ export default function BogglePage() {
               <span className="hidden sm:inline">Practice</span>
             </button>
             <button
-              onClick={() => {
-                if (!user) { setShowAuthModal(true); return; }
-                setActiveTab('multiplayer');
-              }}
+              onClick={() => setActiveTab('multiplayer')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-sm transition-all ${activeTab === 'multiplayer'
                 ? 'bg-[#1A3C34] text-white'
                 : 'text-[#666] hover:text-[#1A3C34]'
@@ -233,20 +230,24 @@ export default function BogglePage() {
           </button>
 
           <Link
-            href="https://github.com/jeromeoe/boggle-NYT"
+            href="https://www.linkedin.com/in/jerome-pooi-b172a315a/"
             target="_blank"
             className="p-2 rounded-full hover:bg-[#E6E4DD] text-[#1A3C34] transition-colors"
-            title="View Source"
+            title="LinkedIn"
           >
-            <SiGithub className="w-5 h-5" />
+            <SiLinkedin className="w-5 h-5" />
           </Link>
         </div>
       </header>
 
       {/* Main Game Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 z-10">
-        {activeTab === 'multiplayer' && user ? (
-          <MultiplayerView user={user} onExit={() => setActiveTab('play')} />
+        {activeTab === 'multiplayer' ? (
+          <MultiplayerView
+            user={user!}
+            onExit={() => setActiveTab('play')}
+            onSignInClick={() => setShowAuthModal(true)}
+          />
         ) : activeTab === 'practice' ? (
           <PracticeMode />
         ) : (

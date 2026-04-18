@@ -42,7 +42,7 @@ export interface SubmitPayload {
 
 export interface EventPlayerJoined {
   type: "player_joined";
-  player: Pick<MultiplayerPlayer, "user_id" | "username" | "display_name">;
+  player: MultiplayerPlayer;
 }
 
 export interface EventWordCountUpdate {
@@ -56,7 +56,17 @@ export interface EventPlayerLeft {
   user_id: string;
 }
 
+export interface EventCountdownStarted {
+  type: "countdown_started";
+}
+
+export interface EventRoomReset {
+  type: "room_reset";
+}
+
 export type MultiplayerBroadcastEvent =
   | EventPlayerJoined
   | EventWordCountUpdate
-  | EventPlayerLeft;
+  | EventPlayerLeft
+  | EventCountdownStarted
+  | EventRoomReset;

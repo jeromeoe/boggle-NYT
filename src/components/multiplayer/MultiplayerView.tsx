@@ -9,6 +9,7 @@ import { MultiplayerEntryModal } from "./MultiplayerEntryModal";
 import { MultiplayerLobby } from "./MultiplayerLobby";
 import { MultiplayerOpponentTracker } from "./MultiplayerOpponentTracker";
 import { MultiplayerResultsScreen } from "./MultiplayerResultsScreen";
+import { MultiplayerLanding } from "./MultiplayerLanding";
 import { Board } from "@/components/game/Board";
 import { WordInput } from "@/components/game/WordInput";
 import { Timer } from "@/components/game/Timer";
@@ -18,11 +19,12 @@ import type { SubmitPayload } from "@/lib/multiplayer/types";
 import { motion } from "framer-motion";
 
 interface Props {
-    user: User;
+    user: User | null;
     onExit: () => void;
+    onSignInClick: () => void;
 }
 
-export function MultiplayerView({ user, onExit }: Props) {
+export function MultiplayerView({ user, onExit, onSignInClick }: Props) {
     const { trie, dictionaryLoaded } = useDictionary();
     const [currInput, setCurrInput] = useState("");
     const [board, setBoard] = useState<string[][]>([]);
@@ -33,16 +35,18 @@ export function MultiplayerView({ user, onExit }: Props) {
         phase,
         wordCounts,
         timeLeft,
+        countdown,
         error,
         isLoading,
         createRoom,
         joinRoom,
         startGame,
+        resetRoom,
         submitResult,
         broadcastWordCount,
         leaveRoom,
         setOnTimerExpired,
-    } = useMultiplayerRoom(user.id);
+    } = useMultiplayerRoom(user?.id ?? '');
 
     const handleGameEnd = useCallback(async (result: SubmitPayload) => {
         await submitResult(result);
@@ -102,20 +106,38 @@ export function MultiplayerView({ user, onExit }: Props) {
         setCurrInput('');
     };
 
-    const isHost = room?.host_user_id === user.id;
+    const isHost = !!user && room?.host_user_id === user.id;
 
-    // Entry modal (idle phase)
+    // Landing page (idle phase) — two-column: play actions + friends panel
     if (phase === 'idle') {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <MultiplayerEntryModal
-                    isOpen={true}
-                    onClose={onExit}
-                    onCreateRoom={handleCreate}
-                    onJoinRoom={handleJoin}
-                    isLoading={isLoading}
-                    error={error}
-                />
+            <MultiplayerLanding
+                user={user}
+                onCreateRoom={handleCreate}
+                onJoinRoom={handleJoin}
+                onSignInClick={onSignInClick}
+                isLoading={isLoading}
+                error={error}
+            />
+        );
+    }
+
+    // Countdown overlay (shown on top of lobby while 3-2-1 runs)
+    if (phase === 'countdown') {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <div className="text-xs font-mono uppercase tracking-widest text-[#8A9A90]">Game starting</div>
+                <motion.div
+                    key={countdown}
+                    initial={{ scale: 1.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="text-[9rem] font-serif font-bold text-[#1A3C34] leading-none"
+                >
+                    {countdown ?? ''}
+                </motion.div>
+                <div className="text-sm text-[#8A9A90]">Get ready…</div>
             </div>
         );
     }
@@ -128,7 +150,7 @@ export function MultiplayerView({ user, onExit }: Props) {
                     <MultiplayerLobby
                         room={room}
                         players={players}
-                        myUserId={user.id}
+                        myUserId={user?.id ?? ''}
                         isHost={isHost}
                         isLoading={isLoading}
                         onStart={startGame}
@@ -145,9 +167,9 @@ export function MultiplayerView({ user, onExit }: Props) {
             <div className="flex flex-col items-center pt-8 px-4">
                 <MultiplayerResultsScreen
                     players={players}
-                    myUserId={user.id}
+                    myUserId={user?.id ?? ''}
                     isHost={isHost}
-                    onPlayAgain={async () => { handleLeave(); await handleCreate(); }}
+                    onPlayAgain={resetRoom}
                     onLeave={handleLeave}
                 />
             </div>
@@ -197,7 +219,7 @@ export function MultiplayerView({ user, onExit }: Props) {
                     <MultiplayerOpponentTracker
                         players={players}
                         wordCounts={wordCounts}
-                        myUserId={user.id}
+                        myUserId={user?.id ?? ''}
                     />
                 </div>
 

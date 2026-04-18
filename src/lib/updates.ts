@@ -31,24 +31,21 @@ export interface Update {
 export const UPDATE_SEEN_KEY = "boggle.update.lastSeen";
 
 export const CURRENT_UPDATE: Update = {
-    id: "2026-04-09-v1",
-    date: "2026-04-09",
-    headline: "Updates",
+    id: "2026-04-18-v1",
+    date: "2026-04-18",
+    headline: "Multiplayer got some love",
     notes: [
         {
-            title: "Pathfinder",
-            description:
-                "Your word is now traced on the board as you type. If you don't like it, you can turn it off under the new Settings page",
+            title: "Friends",
+            description: "friends!",
         },
         {
-            title: "Dark mode",
-            description:
-                "Change the view settings as you like :-)",
+            title: "Play again",
+            description: "After a game, everyone stays in the same lobby for replayability",
         },
         {
-            title: "Settings page",
-            description:
-                "Settings page",
+            title: "Countdown",
+            description: "for you da en",
         },
     ],
 };

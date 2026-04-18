@@ -3,6 +3,10 @@
     {
       "path": "/api/multiplayer/cleanup",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/bots/daily-play",
+      "schedule": "0 10 * * *"
     }
   ]
 }

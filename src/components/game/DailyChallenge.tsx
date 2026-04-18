@@ -56,13 +56,13 @@ export function DailyChallengeBanner({ onStartDaily, isActive, hasPlayed }: Dail
                     </div>
 
                     <h3 className="text-2xl md:text-3xl font-serif font-bold text-[#F9F7F1] mb-2">
-                        Today's Custom Boggle
+                        Play Today's Daily
                     </h3>
 
                     <p className="text-[#B8C5BD] text-sm">
                         {hasPlayed
                             ? "You've already played today's challenge. Replay for practice!"
-                            : "The curated Boggle Board for the day. Compete globally!"}
+                            : "The curated board for the day. Compete globally!"}
                     </p>
                 </div>
 
