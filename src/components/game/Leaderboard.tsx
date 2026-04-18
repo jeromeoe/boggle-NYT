@@ -188,10 +188,15 @@ export function LeaderboardModal({ isOpen, onClose, userId }: LeaderboardModalPr
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="font-semibold text-[#1A3C34] text-sm truncate">
-                                                    {entry.display_name || entry.username}
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-semibold text-[#1A3C34] text-sm truncate">
+                                                        {entry.display_name || entry.username}
+                                                    </span>
+                                                    {entry.username === 'jerome' && (
+                                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1A3C34] text-[#D4AF37] tracking-wider uppercase flex-shrink-0">Dev</span>
+                                                    )}
                                                     {entry.user_id === userId && (
-                                                        <span className="ml-2 text-[10px] font-mono text-[#D4AF37] uppercase tracking-wide">you</span>
+                                                        <span className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wide flex-shrink-0">you</span>
                                                     )}
                                                 </div>
                                                 <div className="text-[11px] text-[#999] font-mono">@{entry.username}</div>
