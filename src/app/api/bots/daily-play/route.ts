@@ -15,15 +15,15 @@ import path from "path";
 interface BotProfile {
     username: string;
     displayName: string;
-    /** "good" = ~10 pts below top, "bad" = ~20 pts total */
-    skill: "good" | "bad";
+    /** "average" = ~8-10% of max possible, "bad" = ~20 pts total */
+    skill: "average" | "bad";
 }
 
 const BOTS: BotProfile[] = [
     { username: "cuddler", displayName: "TCuddler", skill: "bad" },
     { username: "xqc", displayName: "Is", skill: "bad" },
     { username: "weslers", displayName: "wesley", skill: "bad" },
-    { username: "ethan", displayName: "ethan", skill: "good" },
+    { username: "abcdef", displayName: "abcdef", skill: "average" },
 ];
 
 const BOT_PASSWORD = "bot_internal_account_do_not_login";
@@ -59,22 +59,26 @@ function shuffleWithRng<T>(arr: T[], rng: () => number): T[] {
 /** Pick words for a bot and return { wordsFound, wordsPenalized }. */
 function pickWords(
     allWords: string[],
-    skill: "good" | "bad",
+    skill: "average" | "bad",
     targetNet: number,
     rng: () => number
 ): { wordsFound: string[]; wordsPenalized: string[] } {
     const shuffled = shuffleWithRng(allWords, rng);
+    const consonants = "BCDFGHJKLMNPQRSTVWXYZ";
 
-    if (skill === "good") {
-        // ethan: aim for targetNet, with 1-2 penalties
-        // gross should be +2 from net → penalty total = -2
-        const penaltyCount = rng() < 0.5 ? 1 : 2;
-        const targetGross = targetNet + 2;
+    const buildFakePenalty = (len: number) => {
+        let fake = "";
+        for (let c = 0; c < len; c++) fake += consonants[Math.floor(rng() * consonants.length)];
+        return fake;
+    };
 
+    if (skill === "average") {
+        // abcdef: hit targetNet with a small natural overshoot buffer, 0-1 penalty
+        const doPenalize = rng() < 0.35;
+        const targetGross = doPenalize ? targetNet + 2 : targetNet;
         const wordsFound: string[] = [];
         let gross = 0;
 
-        // Pick words greedily until we're near the target
         for (const word of shuffled) {
             const s = calculateScore(word);
             if (gross + s <= targetGross + 1) {
@@ -84,44 +88,30 @@ function pickWords(
             if (gross >= targetGross) break;
         }
 
-        // Generate fake penalty words — short non-words
         const penalized: string[] = [];
-        const consonants = "BCDFGHJKLMNPQRSTVWXYZ";
-        for (let i = 0; i < penaltyCount; i++) {
-            let fake = "";
-            for (let c = 0; c < 4; c++) {
-                fake += consonants[Math.floor(rng() * consonants.length)];
-            }
-            penalized.push(fake);
-        }
+        if (doPenalize) penalized.push(buildFakePenalty(4));
 
         return { wordsFound, wordsPenalized: penalized };
     }
 
-    // bad bots: aim for ~20 net points, 0-1 penalties
-    const targetBadNet = 17 + Math.floor(rng() * 8); // 17-24
-    const doPenalize = rng() < 0.4;
+    // bad bots: raw ~30-40, net ~20-26 after heavy penalties
+    const targetGross = 30 + Math.floor(rng() * 11); // 30-40
     const wordsFound: string[] = [];
     let gross = 0;
 
     for (const word of shuffled) {
         const s = calculateScore(word);
-        if (gross + s <= targetBadNet + 2) {
+        if (gross + s <= targetGross + 2) {
             wordsFound.push(word);
             gross += s;
         }
-        if (gross >= targetBadNet) break;
+        if (gross >= targetGross) break;
     }
 
+    // Heavy penalty load — 3-6 fake attempts to reflect high error rate
+    const penaltyCount = 3 + Math.floor(rng() * 4);
     const penalized: string[] = [];
-    if (doPenalize) {
-        const consonants = "BCDFGHJKLMNPQRSTVWXYZ";
-        let fake = "";
-        for (let c = 0; c < 3; c++) {
-            fake += consonants[Math.floor(rng() * consonants.length)];
-        }
-        penalized.push(fake);
-    }
+    for (let i = 0; i < penaltyCount; i++) penalized.push(buildFakePenalty(3 + Math.floor(rng() * 3)));
 
     return { wordsFound, wordsPenalized: penalized };
 }
@@ -197,11 +187,13 @@ export async function POST(req: NextRequest) {
         .single();
 
     const currentTopScore = topEntry?.net_score ?? 0;
-    // ethan targets 10 below top; if nobody played yet, aim for ~35% of max
     const maxPossibleScore = allWordsSorted.reduce((s, w) => s + calculateScore(w), 0);
-    const ethanTarget = currentTopScore > 0
-        ? Math.max(currentTopScore - 10, 15)
-        : Math.floor(maxPossibleScore * 0.35);
+    // abcdef aims for ~10% of max possible, ±1% variance per day
+    const abcdefRng = seededRng(dateSeed + 7777);
+    const abcdefTarget = Math.max(
+        Math.floor(maxPossibleScore * (0.10 + abcdefRng() * 0.05)),
+        12
+    );
 
     /* ---------- 4. Decide which bots play today ---------- */
     const results: { username: string; net: number; status: string }[] = [];
@@ -241,7 +233,7 @@ export async function POST(req: NextRequest) {
         const botSeed = dateSeed + bot.username.charCodeAt(0) * 1000 + seed;
         const rng = seededRng(botSeed);
 
-        const target = bot.skill === "good" ? ethanTarget : 0;
+        const target = bot.skill === "average" ? abcdefTarget : 0;
         const { wordsFound, wordsPenalized } = pickWords(
             allWordsSorted,
             bot.skill,
@@ -253,10 +245,10 @@ export async function POST(req: NextRequest) {
         const penalty = wordsPenalized.reduce((s, w) => s + calculatePenalty(w), 0);
         const net = gross + penalty;
 
-        // Completion time — good player uses more time, bad players less
-        const baseTime = bot.skill === "good"
-            ? 140 + Math.floor(rng() * 30) // 140-170s
-            : 80 + Math.floor(rng() * 60); // 80-140s
+        // Completion time
+        const baseTime = bot.skill === "average"
+            ? 180
+            : 120 + Math.floor(rng() * 61); // 120-180s
 
         // Write game_stats
         await supabase.from("game_stats").insert({
