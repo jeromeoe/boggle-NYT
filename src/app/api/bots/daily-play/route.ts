@@ -187,6 +187,7 @@ export async function POST(req: NextRequest) {
         .single();
 
     const currentTopScore = topEntry?.net_score ?? 0;
+    const dateSeed = parseInt(today.replace(/-/g, ""));
     const maxPossibleScore = allWordsSorted.reduce((s, w) => s + calculateScore(w), 0);
     // abcdef aims for ~10% of max possible, ±1% variance per day
     const abcdefRng = seededRng(dateSeed + 7777);
@@ -197,7 +198,6 @@ export async function POST(req: NextRequest) {
 
     /* ---------- 4. Decide which bots play today ---------- */
     const results: { username: string; net: number; status: string }[] = [];
-    const dateSeed = parseInt(today.replace(/-/g, ""));
 
     // Each bot has a ~60% chance of playing on any given day, decided
     // deterministically via a day-seeded RNG so re-runs are stable.
