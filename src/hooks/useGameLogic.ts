@@ -103,6 +103,20 @@ export function useGameLogic() {
                             isDailyChallenge: true
                         });
 
+                        // Submit daily stats (streak + medals) — gated server-side on email verification
+                        const todayUTC = new Date().toISOString().slice(0, 10);
+                        fetch('/api/stats/daily', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                netScore: scores.net,
+                                grossScore: scores.gross,
+                                foundWords: foundWordsRef.current,
+                                allPossibleWords: Array.from(allPossibleWordsRef.current),
+                                challengeDate: todayUTC,
+                            }),
+                        }).catch(() => {}); // fire-and-forget
+
                         setIsDailyReplay(true);
                         console.log('Score submitted to leaderboard!');
                     }
