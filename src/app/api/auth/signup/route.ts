@@ -71,13 +71,13 @@ export async function POST(req: NextRequest) {
     supabaseAdmin.from('user_daily_stats').insert({ user_id: user.id });
 
     // Send verification email (fire-and-forget — don't block signup on email delivery)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://boggle-nyt.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://moggle.vercel.app';
     const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
     const resend = new Resend(process.env.RESEND_API_KEY);
     resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL ?? 'Boggle.WEB <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM_EMAIL ?? 'Moggle.org <onboarding@resend.dev>',
         to: email,
-        subject: 'Verify your Boggle.WEB email',
+        subject: 'Verify your Moggle.org email',
         html: buildVerificationEmail(username, verifyUrl),
     }).catch(() => {}); // never crash signup on email failure
 
@@ -102,7 +102,7 @@ function buildVerificationEmail(username: string, verifyUrl: string): string {
     return `
         <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;padding:32px;background:#F9F7F1;border-radius:12px;border:1px solid #E6E4DD;">
             <div style="font-size:20px;font-weight:bold;color:#1A3C34;letter-spacing:-0.5px;margin-bottom:24px;">
-                BOGGLE<span style="color:#D4AF37;">.WEB</span>
+                MOGGLE<span style="color:#D4AF37;">.ORG</span>
             </div>
             <h1 style="color:#1A3C34;font-size:22px;margin:0 0 12px;">Welcome, @${username}!</h1>
             <p style="color:#555;line-height:1.7;margin:0 0 8px;">
@@ -121,7 +121,7 @@ function buildVerificationEmail(username: string, verifyUrl: string): string {
             </p>
             <hr style="border:none;border-top:1px solid #E6E4DD;margin:28px 0 16px;" />
             <p style="color:#CCC;font-size:11px;margin:0;">
-                BOGGLE<span style="color:#D4AF37;">.WEB</span> &mdash; Competitive Word Game
+                MOGGLE<span style="color:#D4AF37;">.ORG</span> &mdash; Competitive Word Game
             </p>
         </div>
     `;

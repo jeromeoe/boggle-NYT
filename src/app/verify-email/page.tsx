@@ -144,7 +144,7 @@ export default function VerifyEmailPage() {
                 <div className="h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
                 <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] text-[#F9F7F1] px-8 py-6 text-center">
                     <div className="text-sm font-mono uppercase tracking-widest text-[#D4AF37] mb-1">
-                        BOGGLE<span className="text-[#8A9A90]">.WEB</span>
+                        MOGGLE<span className="text-[#8A9A90]">.ORG</span>
                     </div>
                     <h1 className="text-2xl font-serif font-bold">Email Verification</h1>
                 </div>
