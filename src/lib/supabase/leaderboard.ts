@@ -68,7 +68,7 @@ export async function getLeaderboardForDate(date: string, limit: number = 50): P
     try {
         const { data, error } = await supabase
             .from('daily_leaderboard')
-            .select(`*, users!inner(username, display_name)`)
+            .select(`*, users!inner(username, display_name, custom_tag)`)
             .eq('challenge_date', date)
             .order('net_score', { ascending: false })
             .order('completion_time_seconds', { ascending: true })
@@ -81,6 +81,7 @@ export async function getLeaderboardForDate(date: string, limit: number = 50): P
             rank: index + 1,
             username: entry.users.username,
             display_name: entry.users.display_name,
+            custom_tag: entry.users.custom_tag ?? null,
         }));
     } catch (error) {
         console.error('Error fetching leaderboard:', error);

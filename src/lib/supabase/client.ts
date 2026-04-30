@@ -57,4 +57,5 @@ export interface LeaderboardEntry {
     completion_time_seconds: number;
     username?: string; // Joined from users table
     display_name?: string; // Joined from users table
+    custom_tag?: string | null; // Joined from users table
 }
