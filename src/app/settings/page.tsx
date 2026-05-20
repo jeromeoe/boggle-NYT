@@ -28,7 +28,7 @@ import {
     TbLoader2,
     TbRefresh,
 } from "react-icons/tb";
-import NoiseOverlay from "@/components/shared/noise-overlay";
+import { AppShell } from "@/components/layout/AppShell";
 import { getCurrentUser, signOut } from "@/lib/supabase/auth";
 import type { User } from "@/lib/supabase/client";
 import {
@@ -224,10 +224,8 @@ export default function SettingsPage() {
     const showVerifyBanner = !isVerified && !verifyBannerDismissed && !meLoading;
 
     return (
-        <div className="min-h-screen bg-[#F9F7F1] text-[#1A1A1A] relative overflow-hidden">
-            <NoiseOverlay />
-
-            <div className="relative z-10 max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-12">
+        <AppShell user={user} title="Settings" active="settings" onSignOut={handleSignOut}>
+            <div className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-12">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
@@ -645,7 +643,7 @@ export default function SettingsPage() {
                     </button>
                 </motion.div>
             </div>
-        </div>
+        </AppShell>
     );
 }
 

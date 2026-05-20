@@ -16,16 +16,11 @@ export function calculateScore(word: string): number {
 
 /**
  * Calculate penalty for an invalid word
- * Penalty: 3-5L=-1, 6L=-2, 7L=-3, 8+L=-4
+ * Penalty: every invalid word costs 1 point.
  */
 export function calculatePenalty(word: string): number {
-    const length = word.length;
-
-    if (length < 3) return 0;
-    if (length <= 5) return -1;
-    if (length === 6) return -2;
-    if (length === 7) return -3;
-    return -4; // 8+ letters
+    void word;
+    return -1;
 }
 
 /**

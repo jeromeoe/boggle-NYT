@@ -8,6 +8,8 @@ import { calculateTotalScore } from "@/lib/boggle/scoring";
 import { useDictionary } from "@/hooks/useDictionary";
 
 const GAME_DURATION = 180; // 3 minutes
+const BLITZ_DURATION = 60;  // 1 minute
+const ZEN_HINT_COOLDOWN_MS = 10000;
 
 export function useGameLogic() {
     // Dictionary (shared cache via useDictionary)
@@ -27,6 +29,8 @@ export function useGameLogic() {
     const [isDailyReplay, setIsDailyReplay] = useState(false);
     const [isCustomBoardLoaded, setIsCustomBoardLoaded] = useState(false);
     const [isGeneratingBoard, setIsGeneratingBoard] = useState(false);
+    const [isZenMode, setIsZenMode] = useState(false);
+    const [hintCooldownMs, setHintCooldownMs] = useState(0);
 
     // Timer ref
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -40,6 +44,7 @@ export function useGameLogic() {
     const boardRef = useRef<string[][]>([]);
     const isDailyChallengeRef = useRef(false);
     const isDailyReplayRef = useRef(false);
+    const hintReadyAtRef = useRef(0);
 
     useEffect(() => { foundWordsRef.current = foundWords; }, [foundWords]);
     useEffect(() => { penalizedWordsRef.current = penalizedWords; }, [penalizedWords]);
@@ -48,6 +53,22 @@ export function useGameLogic() {
     useEffect(() => { boardRef.current = board; }, [board]);
     useEffect(() => { isDailyChallengeRef.current = isDailyChallenge; }, [isDailyChallenge]);
     useEffect(() => { isDailyReplayRef.current = isDailyReplay; }, [isDailyReplay]);
+
+    useEffect(() => {
+        if (!gameActive || !isZenMode) {
+            hintReadyAtRef.current = 0;
+            setHintCooldownMs(0);
+            return;
+        }
+
+        const tick = () => {
+            setHintCooldownMs(Math.max(0, hintReadyAtRef.current - Date.now()));
+        };
+
+        tick();
+        const interval = setInterval(tick, 100);
+        return () => clearInterval(interval);
+    }, [gameActive, isZenMode]);
 
     // Set ready message once dictionary loads
     useEffect(() => {
@@ -129,7 +150,7 @@ export function useGameLogic() {
 
     // Timer countdown — placed after endGame so the dep below is in scope
     useEffect(() => {
-        if (!gameActive || timeLeft <= 0) return;
+        if (!gameActive || timeLeft <= 0 || isZenMode) return;
 
         timerRef.current = setTimeout(() => {
             setTimeLeft((prev) => prev - 1);
@@ -138,14 +159,14 @@ export function useGameLogic() {
         return () => {
             if (timerRef.current) clearTimeout(timerRef.current);
         };
-    }, [gameActive, timeLeft]);
+    }, [gameActive, timeLeft, isZenMode]);
 
-    // End game when timer reaches 0
+    // End game when timer reaches 0 (not in zen mode)
     useEffect(() => {
-        if (gameActive && timeLeft === 0) {
+        if (gameActive && timeLeft === 0 && !isZenMode) {
             endGame(false);
         }
-    }, [gameActive, timeLeft, endGame]);
+    }, [gameActive, timeLeft, isZenMode, endGame]);
 
     const startGame = useCallback(async (mode: GameMode = "random") => {
         if (!trie) return;
@@ -171,6 +192,7 @@ export function useGameLogic() {
         setShowResults(false);
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
+        setIsZenMode(false);
         setStatusMessage(`${possible.size} words available`);
         setIsGeneratingBoard(false);
     }, [trie]);
@@ -192,6 +214,7 @@ export function useGameLogic() {
         setShowResults(false);
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
+        setIsZenMode(false);
         setStatusMessage(`Custom • ${possible.size} words available`);
         return true;
     }, [trie]);
@@ -216,13 +239,40 @@ export function useGameLogic() {
             setFoundWords((prev) => [...prev, normalizedWord]);
             return { status: "valid" };
         } else {
-            setPenalizedWords((prev) => [...prev, normalizedWord]);
+            if (!isZenMode) {
+                setPenalizedWords((prev) => [...prev, normalizedWord]);
+            }
             const reason = validWords.has(normalizedWord) ? "Not on board" : "Not in dictionary";
             return { status: "invalid", reason };
         }
-    }, [gameActive, trie, foundWords, penalizedWords, allPossibleWords, validWords, endGame]);
+    }, [gameActive, trie, foundWords, penalizedWords, allPossibleWords, validWords, isZenMode, endGame]);
 
-    const scores = calculateTotalScore(foundWords, penalizedWords);
+    const scores = calculateTotalScore(foundWords, isZenMode ? [] : penalizedWords);
+
+    const useZenHint = useCallback(() => {
+        if (!gameActive || !isZenMode) return { status: "ignored" };
+
+        const cooldownMs = Math.max(0, hintReadyAtRef.current - Date.now());
+        if (cooldownMs > 0) {
+            return { status: "cooldown", cooldownMs };
+        }
+
+        const found = new Set(foundWords);
+        const candidates = Array.from(allPossibleWords)
+            .filter((word) => !found.has(word))
+            .sort((a, b) => a.length - b.length || a.localeCompare(b));
+
+        if (candidates.length === 0) {
+            setStatusMessage("No hints left - you found everything!");
+            return { status: "empty" };
+        }
+
+        const word = candidates[Math.floor(Math.random() * Math.min(candidates.length, 20))];
+        setStatusMessage(`Hint: try ${word}`);
+        hintReadyAtRef.current = Date.now() + ZEN_HINT_COOLDOWN_MS;
+        setHintCooldownMs(ZEN_HINT_COOLDOWN_MS);
+        return { status: "hint", word };
+    }, [allPossibleWords, foundWords, gameActive, isZenMode]);
 
 
 
@@ -266,12 +316,75 @@ export function useGameLogic() {
             setTimeLeft(GAME_DURATION);
             setGameActive(true);
             setShowResults(false);
+            setIsZenMode(false);
             setStatusMessage(`Daily Challenge • ${possible.size} words available`);
         } catch (error) {
             console.error("Failed to load daily challenge:", error);
             setStatusMessage("Error loading daily challenge");
             setIsDailyChallenge(false);
         }
+    }, [trie]);
+
+    const startBlitz = useCallback(async () => {
+        if (!trie) return;
+        setIsGeneratingBoard(true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        const newBoard = generateBoard();
+        const possible = findAllWords(newBoard, trie);
+        setBoard(newBoard);
+        setAllPossibleWords(possible);
+        setFoundWords([]);
+        setPenalizedWords([]);
+        setTimeLeft(BLITZ_DURATION);
+        setGameActive(true);
+        setShowResults(false);
+        setIsDailyChallenge(false);
+        setIsCustomBoardLoaded(false);
+        setIsZenMode(false);
+        setStatusMessage(`Blitz · ${possible.size} words`);
+        setIsGeneratingBoard(false);
+    }, [trie]);
+
+    const startRapid = useCallback(async () => {
+        if (!trie) return;
+        setIsGeneratingBoard(true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        const newBoard = generateBoard();
+        const possible = findAllWords(newBoard, trie);
+        setBoard(newBoard);
+        setAllPossibleWords(possible);
+        setFoundWords([]);
+        setPenalizedWords([]);
+        setTimeLeft(GAME_DURATION);
+        setGameActive(true);
+        setShowResults(false);
+        setIsDailyChallenge(false);
+        setIsCustomBoardLoaded(false);
+        setIsZenMode(false);
+        setStatusMessage(`Rapid · ${possible.size} words`);
+        setIsGeneratingBoard(false);
+    }, [trie]);
+
+    const startZen = useCallback(async () => {
+        if (!trie) return;
+        setIsGeneratingBoard(true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        const newBoard = generateBoard();
+        const possible = findAllWords(newBoard, trie);
+        setBoard(newBoard);
+        setAllPossibleWords(possible);
+        setFoundWords([]);
+        setPenalizedWords([]);
+        setTimeLeft(0);
+        setGameActive(true);
+        setShowResults(false);
+        setIsDailyChallenge(false);
+        setIsCustomBoardLoaded(false);
+        setIsZenMode(true);
+        hintReadyAtRef.current = 0;
+        setHintCooldownMs(0);
+        setStatusMessage(`Zen · ${possible.size} words`);
+        setIsGeneratingBoard(false);
     }, [trie]);
 
     return {
@@ -290,13 +403,19 @@ export function useGameLogic() {
         isDailyChallenge,
         isDailyReplay,
         isGeneratingBoard,
+        isZenMode,
+        hintCooldownMs,
 
         // Actions
         startGame,
+        startBlitz,
+        startRapid,
+        startZen,
         startCustomGameFromInput,
         startDailyChallenge,
         endGame,
         submitWord,
+        useZenHint,
         setShowResults,
     };
 }
