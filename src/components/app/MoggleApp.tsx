@@ -25,7 +25,6 @@ import { getPathfinderEnabled, PREF_KEYS } from "@/lib/preferences";
 import { TbTrophy, TbBulb } from "react-icons/tb";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { Dashboard } from "@/components/dashboard/Dashboard";
-import { AppShell } from "@/components/layout/AppShell";
 import { useRouter } from "next/navigation";
 
 export type MoggleInitialView = "dashboard" | "mail" | "play" | "blitz" | "rapid" | "daily" | "zen" | "practice" | "multiplayer" | "live-mp" | "friends-mp";
@@ -82,13 +81,6 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
   const initialViewHandledRef = useRef(false);
   const hintFillPercent = hintCooldownMs === 0 ? 100 : Math.max(0, Math.min(100, ((10000 - hintCooldownMs) / 10000) * 100));
   const hintReady = hintCooldownMs === 0;
-  const shellActive = isZenMode
-    ? "zen"
-    : activeTab === "multiplayer" && ["multiplayer", "live-mp", "friends-mp"].includes(initialView)
-      ? initialView === "friends-mp" ? "friends-mp" : "live-mp"
-    : activeTab === "play" && ["blitz", "rapid", "daily"].includes(initialView)
-      ? initialView
-      : activeTab;
 
   const handleSelectMode = (mode: GameMode) => {
     startGame(mode);
@@ -168,11 +160,6 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
     router.push("/");
   };
 
-  const goDashboard = () => {
-    setShowingDashboard(true);
-    if (window.location.pathname !== "/") router.push("/");
-  };
-
   // When a game ends, return to dashboard
   useEffect(() => {
     if (!gameActive && !showResults && user) {
@@ -250,13 +237,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
   }
 
   return (
-    <AppShell
-      user={user}
-      onSignOut={handleSignOut}
-      onDashboardClick={goDashboard}
-      active={shellActive}
-      title={activeTab === "multiplayer" ? "Multiplayer" : activeTab === "practice" ? "Practice" : isZenMode ? "Zen Mode" : "Game"}
-    >
+    <>
       {/* Challenge invite toast — always mounted so the Realtime subscription survives tab switches */}
       {user && (
         <ChallengeNotification
@@ -430,7 +411,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
         {showResults && (
           <ResultsReport
             isOpen={showResults}
-            onClose={() => { setShowResults(false); if (user) goDashboard(); }}
+            onClose={() => { setShowResults(false); if (user) router.push("/"); }}
             allPossibleWords={allPossibleWords}
             foundWords={new Set(foundWords)}
             gross={scores.gross}
@@ -461,6 +442,6 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
 
       {/* One-time "What's new" popup — self-dismissing after first view per update id */}
       <WhatsNewPopup />
-    </AppShell>
+    </>
   );
 }

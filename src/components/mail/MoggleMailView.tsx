@@ -1,17 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDictionary } from "@/hooks/useDictionary";
 import { findAllWords } from "@/lib/boggle/solver";
 import { generateBoard } from "@/lib/boggle/dice";
 import { calculateTotalScore, calculateScore, calculatePenalty } from "@/lib/boggle/scoring";
+import { findCandidateTrail } from "@/lib/boggle/pathFinder";
+import { getPathfinderEnabled } from "@/lib/preferences";
 import { Board } from "@/components/game/Board";
+import { Timer } from "@/components/game/Timer";
+import { WordInput } from "@/components/game/WordInput";
+import { FoundWordsList } from "@/components/game/FoundWordsList";
 import type { User } from "@/lib/supabase/client";
 import {
-    TbMail, TbMailOpened, TbSend, TbArrowLeft, TbClock,
-    TbLayoutGrid, TbRefresh, TbCheck, TbX, TbSwords,
-    TbInbox, TbLoader2, TbTrophy
+    TbMail, TbMailOpened, TbSend, TbArrowLeft,
+    TbRefresh, TbX, TbSwords,
+    TbInbox, TbLoader2,
 } from "react-icons/tb";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -97,27 +102,22 @@ function Avatar({ name, userId, size = 32 }: { name: string; userId: string; siz
     );
 }
 
-// Get partner (the other person) from a mail relative to viewer
 function getPartner(mail: MailItem, myId: string): MailUser {
     return mail.sender_id === myId ? mail.recipient : mail.sender;
 }
 
-// Am I the recipient of this mail?
 function isRecipient(mail: MailItem, myId: string): boolean {
     return mail.recipient_id === myId;
 }
 
-// Has the recipient played?
 function recipientPlayed(mail: MailItem): boolean {
     return !!mail.recipient_played_at;
 }
 
-// Should sender score be hidden? (closed type, recipient hasn't played yet, and I am recipient)
 function senderScoreHidden(mail: MailItem, myId: string): boolean {
     return mail.board_type === "closed" && !recipientPlayed(mail) && isRecipient(mail, myId);
 }
 
-// Get the board to play on (for recipient)
 function getBoardForPlay(mail: MailItem): string[][] {
     if (mail.board_type === "random" && mail.recipient_board_letters) {
         return mail.recipient_board_letters;
@@ -125,7 +125,6 @@ function getBoardForPlay(mail: MailItem): string[][] {
     return mail.board_letters;
 }
 
-// Group mails by conversation partner
 function groupConversations(mails: MailItem[], myId: string): Map<string, MailItem[]> {
     const map = new Map<string, MailItem[]>();
     for (const mail of mails) {
@@ -136,14 +135,13 @@ function groupConversations(mails: MailItem[], myId: string): Map<string, MailIt
     return map;
 }
 
-// Unread = I'm recipient and haven't played yet
 function countUnread(mails: MailItem[], myId: string): number {
     return mails.filter(m => m.recipient_id === myId && !m.recipient_played_at).length;
 }
 
 // ── Mini game hook ─────────────────────────────────────────────────────────────
 
-function useMailGame(board: string[][] | null, timeSeconds: number) {
+function useMailGame(board: string[][] | null, timeSeconds: number, serverStartedAt?: string | null) {
     const { trie, dictionaryLoaded } = useDictionary();
     const [allPossibleWords, setAllPossibleWords] = useState<Set<string>>(new Set());
     const [foundWords, setFoundWords] = useState<string[]>([]);
@@ -161,7 +159,6 @@ function useMailGame(board: string[][] | null, timeSeconds: number) {
         }
     }, [trie, dictionaryLoaded, board]);
 
-    // Timer
     useEffect(() => {
         if (!isActive || timeLeft <= 0) return;
         const t = setInterval(() => setTimeLeft(p => {
@@ -172,12 +169,24 @@ function useMailGame(board: string[][] | null, timeSeconds: number) {
     }, [isActive, timeLeft]);
 
     const start = useCallback(() => {
+        // Compute elapsed time from server-anchored start timestamp.
+        // This means a refresh gives the player less time, never a fresh start.
+        let adjustedTime = timeSeconds;
+        if (serverStartedAt) {
+            const elapsed = Math.floor((Date.now() - new Date(serverStartedAt).getTime()) / 1000);
+            adjustedTime = Math.max(0, timeSeconds - elapsed);
+        }
         setFoundWords([]);
         setPenalizedWords([]);
-        setTimeLeft(timeSeconds);
-        setIsActive(true);
-        setIsDone(false);
-    }, [timeSeconds]);
+        setTimeLeft(adjustedTime);
+        if (adjustedTime <= 0) {
+            setIsActive(false);
+            setIsDone(true);
+        } else {
+            setIsActive(true);
+            setIsDone(false);
+        }
+    }, [timeSeconds, serverStartedAt]);
 
     const endEarly = useCallback(() => {
         setIsActive(false);
@@ -221,7 +230,7 @@ function useMailGame(board: string[][] | null, timeSeconds: number) {
 function ScorePill({ label, value, color }: { label: string; value: number; color: string }) {
     return (
         <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 20, fontWeight: 700, color }}>{value >= 0 ? value : value}</div>
+            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 20, fontWeight: 700, color }}>{value}</div>
             <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginTop: 2 }}>{label}</div>
         </div>
     );
@@ -241,140 +250,146 @@ function BoardTypeBadge({ type }: { type: string }) {
     );
 }
 
-// ── Game Player (embedded) ─────────────────────────────────────────────────────
+// ── Game Player (uses real board + pathfinder) ─────────────────────────────────
 
 function MailGamePlayer({
-    board, timeSeconds, onComplete, onCancel,
+    board, timeSeconds, serverStartedAt, onComplete, onCancel,
 }: {
     board: string[][];
     timeSeconds: number;
+    serverStartedAt: string | null;
     onComplete: (result: GameResult) => void;
     onCancel: () => void;
 }) {
-    const [input, setInput] = useState("");
-    const inputRef = useRef<HTMLInputElement>(null);
-    const { dictionaryLoaded, foundWords, penalizedWords, timeLeft, isActive, isDone, scores, statusMessage, start, endEarly, submitWord } = useMailGame(board, timeSeconds);
+    const [currInput, setCurrInput] = useState("");
+    const [pfEnabled, setPfEnabled] = useState(true);
+    const {
+        dictionaryLoaded, foundWords, penalizedWords,
+        timeLeft, isActive, isDone, scores, statusMessage,
+        start, endEarly, submitWord,
+    } = useMailGame(board, timeSeconds, serverStartedAt);
+
+    useEffect(() => {
+        setPfEnabled(getPathfinderEnabled());
+    }, []);
+
+    const candidateTrail = useMemo(
+        () => (pfEnabled && isActive && currInput && board.length > 0
+            ? findCandidateTrail(currInput, board)
+            : undefined),
+        [currInput, board, isActive, pfEnabled]
+    );
 
     useEffect(() => {
         if (dictionaryLoaded) start();
     }, [dictionaryLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        if (isDone) {
-            setTimeout(() => {
-                onComplete({
-                    gross: scores.gross,
-                    penalty: scores.penalty,
-                    net: scores.net,
-                    words: foundWords,
-                    penaltyWords: penalizedWords,
-                });
-            }, 600);
-        }
+        if (!isDone) return;
+        const t = setTimeout(() => {
+            onComplete({
+                gross: scores.gross,
+                penalty: scores.penalty,
+                net: scores.net,
+                words: foundWords,
+                penaltyWords: penalizedWords,
+            });
+        }, 400);
+        return () => clearTimeout(t);
     }, [isDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSubmit = () => {
-        if (!input.trim()) return;
-        submitWord(input);
-        setInput("");
-        inputRef.current?.focus();
+        if (!currInput.trim()) return;
+        submitWord(currInput);
+        setCurrInput("");
     };
-
-    const timerPct = (timeLeft / timeSeconds) * 100;
-    const timerColor = timerPct > 50 ? "#2D6A4F" : timerPct > 25 ? "#D4AF37" : "#E63946";
 
     if (!dictionaryLoaded) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 320, gap: 12 }}>
-                <TbLoader2 style={{ animation: "spin 1s linear infinite", color: "#8A8A8A", width: 20, height: 20 }} />
-                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 12, color: "#8A8A8A" }}>Loading dictionary…</span>
+            <div className="flex items-center justify-center min-h-64 gap-3">
+                <TbLoader2 className="animate-spin text-[#8A8A8A] w-5 h-5" />
+                <span className="font-mono text-sm text-[#8A8A8A]">Loading dictionary…</span>
             </div>
         );
     }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Timer bar */}
-            <div style={{ background: "#E6E4DD", borderRadius: 4, height: 6, overflow: "hidden" }}>
-                <motion.div
-                    style={{ height: "100%", background: timerColor, borderRadius: 4 }}
-                    animate={{ width: `${timerPct}%` }}
-                    transition={{ duration: 0.9, ease: "linear" }}
-                />
-            </div>
-
-            {/* Timer + Score row */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <TbClock style={{ color: timerColor, width: 18, height: 18 }} />
-                    <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 24, fontWeight: 700, color: timerColor }}>{fmtTime(timeLeft)}</span>
+        <div className="w-full">
+            {/* Score hero + Timer row */}
+            <div className="grid grid-cols-[1fr_auto] gap-4 mb-6">
+                <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] rounded-2xl p-5 shadow-xl border border-[#D4AF37]/20">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-xs font-mono uppercase tracking-widest text-[#8A9A90] mb-1">Net Score</div>
+                            <motion.div
+                                className="text-6xl font-serif font-bold text-[#F9F7F1]"
+                                key={scores.net}
+                                initial={{ scale: 1.15, color: "#D4AF37" }}
+                                animate={{ scale: 1, color: "#F9F7F1" }}
+                                transition={{ duration: 0.25 }}
+                            >
+                                {scores.net}
+                            </motion.div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-right mr-2">
+                            <div>
+                                <div className="text-xl font-mono font-bold text-green-300">{scores.gross}</div>
+                                <div className="text-[9px] uppercase tracking-widest text-[#8A9A90]">Gross</div>
+                            </div>
+                            <div>
+                                <div className="text-xl font-mono font-bold text-red-300">{Math.abs(scores.penalty)}</div>
+                                <div className="text-[9px] uppercase tracking-widest text-[#8A9A90]">Penalty</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div style={{ display: "flex", gap: 20, background: "#1A3C34", borderRadius: 12, padding: "8px 18px" }}>
-                    <ScorePill label="Gross" value={scores.gross} color="#86EFAC" />
-                    <ScorePill label="Penalty" value={scores.penalty} color="#FCA5A5" />
-                    <ScorePill label="Net" value={scores.net} color="#EDE8DF" />
+                <div className="bg-white rounded-xl p-4 shadow-md border border-[#E6E4DD] flex flex-col items-center justify-center gap-2 min-w-[96px]">
+                    <Timer timeLeft={timeLeft} gameActive={isActive} />
+                    {isActive && (
+                        <button
+                            onClick={endEarly}
+                            className="text-xs text-[#8A8A8A] hover:text-[#1A3C34] font-mono transition-colors mt-1"
+                        >
+                            End early
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* Board */}
-            <div style={{ display: "flex", justifyContent: "center" }}>
+            <div className="flex justify-center mb-6">
                 <Board
                     board={board}
-                    onTileClick={letter => { if (isActive) setInput(p => p + letter); }}
+                    onTileClick={(l) => { if (isActive) setCurrInput(p => p + l); }}
                     disabled={!isActive}
+                    candidateTrail={candidateTrail}
                 />
             </div>
 
             {/* Word input */}
-            <div style={{ display: "flex", gap: 8 }}>
-                <input
-                    ref={inputRef}
-                    value={input}
-                    onChange={e => setInput(e.target.value.toUpperCase())}
-                    onKeyDown={e => { if (e.key === "Enter") handleSubmit(); if (e.key === "Backspace" && !input) e.preventDefault(); }}
-                    disabled={!isActive}
-                    placeholder={isActive ? "Type a word…" : "Loading…"}
-                    style={{ flex: 1, padding: "10px 14px", fontFamily: "var(--font-geist-mono)", fontSize: 14, fontWeight: 600, textTransform: "uppercase", border: "2px solid #E6E4DD", borderRadius: 10, outline: "none", background: isActive ? "#fff" : "#F9F7F1", color: "#1A3C34", letterSpacing: "0.08em" }}
+            <div className="flex justify-center mb-2">
+                <WordInput
+                    currInput={currInput}
+                    setCurrInput={setCurrInput}
+                    onSubmit={handleSubmit}
+                    gameActive={isActive}
+                    statusMessage={statusMessage}
                 />
-                <button
-                    onClick={handleSubmit}
-                    disabled={!isActive || !input}
-                    style={{ padding: "10px 16px", background: "#1A3C34", color: "#EDE8DF", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 600 }}
-                >
-                    ↵
-                </button>
             </div>
 
-            {/* Status + words */}
-            {statusMessage && (
-                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8A8A8A", minHeight: 16 }}>{statusMessage}</div>
-            )}
+            {/* Word list */}
+            <div className="flex justify-center mb-4">
+                <FoundWordsList foundWords={foundWords} penalizedWords={penalizedWords} />
+            </div>
 
-            {/* Found words */}
-            {foundWords.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                    {foundWords.map(w => (
-                        <span key={w} style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, fontWeight: 600, background: "rgba(45,106,79,0.12)", color: "#2D6A4F", padding: "2px 8px", borderRadius: 5 }}>{w}</span>
-                    ))}
-                </div>
-            )}
-
-            {/* Controls */}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+            {/* Cancel */}
+            <div className="flex justify-center mt-2">
                 <button
                     onClick={onCancel}
-                    style={{ padding: "7px 14px", background: "transparent", border: "1px solid #E6E4DD", borderRadius: 8, cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "#8A8A8A" }}
+                    className="text-sm text-[#8A8A8A] hover:text-[#1A3C34] font-sans transition-colors py-1 px-4"
                 >
-                    Cancel
+                    Cancel game
                 </button>
-                {isActive && (
-                    <button
-                        onClick={endEarly}
-                        style={{ padding: "7px 14px", background: "#1A3C34", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 12, fontWeight: 600, color: "#EDE8DF" }}
-                    >
-                        End Game
-                    </button>
-                )}
             </div>
         </div>
     );
@@ -386,7 +401,6 @@ function ComposeSettings({
     friend,
     onStart,
     onBack,
-    defaultParentId,
 }: {
     friend: Friend;
     onStart: (boardType: "closed" | "open" | "random", timeSeconds: number) => void;
@@ -499,7 +513,6 @@ function MailCard({
     const canPlay = !iAmSender && !played;
 
     const myScore = iAmSender ? mail.sender_net : mail.recipient_net;
-    const theirScore = iAmSender ? mail.recipient_net : mail.sender_net;
     const theirHidden = !iAmSender && hideMyScore ? false : (iAmSender && !played);
 
     const winner = played
@@ -513,7 +526,6 @@ function MailCard({
             padding: 18, boxShadow: "0 2px 8px -2px rgba(26,25,21,0.07)",
             borderLeft: iAmSender ? "3px solid #1A3C34" : "3px solid #D4AF37",
         }}>
-            {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Avatar name={iAmSender ? "You" : (partner.display_name ?? partner.username)} userId={iAmSender ? myId : partner.id} size={28} />
@@ -524,14 +536,10 @@ function MailCard({
                         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#8A8A8A" }}>{timeAgo(mail.created_at)} · {fmtTime(mail.time_seconds)}</div>
                     </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <BoardTypeBadge type={mail.board_type} />
-                </div>
+                <BoardTypeBadge type={mail.board_type} />
             </div>
 
-            {/* Score comparison */}
             <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 100%)", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                {/* My side */}
                 <div style={{ textAlign: "center" }}>
                     <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginBottom: 4 }}>You</div>
                     <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 32, fontWeight: 700, color: iWon ? "#D4AF37" : "#EDE8DF", lineHeight: 1 }}>
@@ -543,7 +551,6 @@ function MailCard({
 
                 <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 14, color: "rgba(237,232,223,0.35)", fontWeight: 700 }}>vs</div>
 
-                {/* Their side */}
                 <div style={{ textAlign: "center" }}>
                     <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginBottom: 4 }}>
                         {partner.display_name ?? partner.username}
@@ -556,7 +563,6 @@ function MailCard({
                 </div>
             </div>
 
-            {/* Result banner */}
             {played && winner && (
                 <div style={{
                     background: iWon ? "rgba(212,175,55,0.12)" : "rgba(230,57,70,0.08)",
@@ -574,7 +580,6 @@ function MailCard({
                 </div>
             )}
 
-            {/* Action buttons */}
             <div style={{ display: "flex", gap: 8 }}>
                 {canPlay && (
                     <button
@@ -655,9 +660,9 @@ type Stage =
     | { type: "pick-friend" }
     | { type: "compose-settings"; friend: Friend; parentId?: string | null }
     | { type: "game"; board: string[][]; timeSeconds: number; boardType: "closed" | "open" | "random"; recipientId: string; parentId?: string | null }
-    | { type: "confirm"; result: GameResult; recipientId: string; board: string[][]; boardType: "closed" | "open" | "random"; timeSeconds: number; recipientBoard?: string[][] | null; parentId?: string | null }
-    | { type: "play-game"; mail: MailItem }
-    | { type: "play-result"; mail: MailItem; result: GameResult };
+    | { type: "game-sent"; result: GameResult; recipientId: string; board: string[][]; boardType: "closed" | "open" | "random"; timeSeconds: number; recipientBoard: string[][] | null; parentId: string | null }
+    | { type: "play-game"; mail: MailItem; serverStartedAt: string }
+    | { type: "play-sent"; mail: MailItem; result: GameResult };
 
 export function MoggleMailView({ user, friends, onClose }: {
     user: User;
@@ -682,10 +687,92 @@ export function MoggleMailView({ user, friends, onClose }: {
 
     useEffect(() => { fetchMails(); }, [fetchMails]);
 
+    // Auto-send after sender finishes their game
+    useEffect(() => {
+        if (stage.type !== "game-sent") return;
+        let cancelled = false;
+        setSending(true);
+        setSendError("");
+
+        (async () => {
+            try {
+                const res = await fetch("/api/mail", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        recipient_id: stage.recipientId,
+                        board_letters: stage.board,
+                        board_type: stage.boardType,
+                        time_seconds: stage.timeSeconds,
+                        sender_gross: stage.result.gross,
+                        sender_penalty: stage.result.penalty,
+                        sender_net: stage.result.net,
+                        sender_words: stage.result.words,
+                        sender_penalty_words: stage.result.penaltyWords,
+                        recipient_board_letters: stage.recipientBoard,
+                        parent_id: stage.parentId,
+                    }),
+                });
+                if (cancelled) return;
+                if (res.ok) {
+                    await fetchMails();
+                    if (!cancelled) setStage({ type: "inbox" });
+                } else {
+                    const d = await res.json();
+                    if (!cancelled) setSendError(d.error ?? "Failed to send");
+                }
+            } catch (e: unknown) {
+                if (!cancelled) setSendError(e instanceof Error ? e.message : "Failed to send");
+            } finally {
+                if (!cancelled) setSending(false);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [stage, fetchMails]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auto-submit after recipient finishes their game
+    useEffect(() => {
+        if (stage.type !== "play-sent") return;
+        let cancelled = false;
+        setSending(true);
+        setSendError("");
+
+        (async () => {
+            try {
+                const res = await fetch(`/api/mail/${stage.mail.id}/play`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        gross: stage.result.gross,
+                        penalty: stage.result.penalty,
+                        net: stage.result.net,
+                        words: stage.result.words,
+                        penalty_words: stage.result.penaltyWords,
+                    }),
+                });
+                if (cancelled) return;
+                if (res.ok) {
+                    const updated = await res.json();
+                    setMails(prev => prev.map(m => m.id === updated.mail.id ? updated.mail : m));
+                    const partner = getPartner(stage.mail, user.id);
+                    if (!cancelled) setStage({ type: "thread", partnerId: partner.id, partnerInfo: partner });
+                } else {
+                    if (!cancelled) setSendError("Failed to submit result");
+                }
+            } catch (e: unknown) {
+                if (!cancelled) setSendError(e instanceof Error ? e.message : "Failed to submit");
+            } finally {
+                if (!cancelled) setSending(false);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [stage, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const conversations = groupConversations(mails, user.id);
     const totalUnread = countUnread(mails, user.id);
 
-    // Sorted conversation list
     const convList = Array.from(conversations.entries())
         .map(([partnerId, pMails]) => {
             const sorted = [...pMails].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -710,85 +797,32 @@ export function MoggleMailView({ user, friends, onClose }: {
             if (prev.type !== "game") return prev;
             const recipientBoard = prev.boardType === "random" ? generateBoard() : null;
             return {
-                type: "confirm",
+                type: "game-sent",
                 result,
                 recipientId: prev.recipientId,
                 board: prev.board,
                 boardType: prev.boardType,
                 timeSeconds: prev.timeSeconds,
                 recipientBoard,
-                parentId: prev.parentId,
+                parentId: prev.parentId ?? null,
             };
         });
     }, []);
 
-    const handleSendMail = async () => {
-        if (stage.type !== "confirm") return;
-        setSending(true);
-        setSendError("");
-        try {
-            const res = await fetch("/api/mail", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    recipient_id: stage.recipientId,
-                    board_letters: stage.board,
-                    board_type: stage.boardType,
-                    time_seconds: stage.timeSeconds,
-                    sender_gross: stage.result.gross,
-                    sender_penalty: stage.result.penalty,
-                    sender_net: stage.result.net,
-                    sender_words: stage.result.words,
-                    sender_penalty_words: stage.result.penaltyWords,
-                    recipient_board_letters: stage.recipientBoard ?? null,
-                    parent_id: stage.parentId ?? null,
-                }),
-            });
-            if (!res.ok) {
-                const d = await res.json();
-                setSendError(d.error ?? "Failed to send");
-                return;
-            }
-            await fetchMails();
-            setStage({ type: "inbox" });
-        } finally {
-            setSending(false);
-        }
-    };
-
-    const handlePlayMail = (mail: MailItem) => {
-        setStage({ type: "play-game", mail });
-    };
-
     const handlePlayComplete = useCallback((result: GameResult) => {
         setStage(prev => {
             if (prev.type !== "play-game") return prev;
-            return { type: "play-result", mail: prev.mail, result };
+            return { type: "play-sent", mail: prev.mail, result };
         });
     }, []);
 
-    const handleSubmitPlay = async () => {
-        if (stage.type !== "play-result") return;
+    const handlePlayMail = async (mail: MailItem) => {
         setSending(true);
         try {
-            const res = await fetch(`/api/mail/${stage.mail.id}/play`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    gross: stage.result.gross,
-                    penalty: stage.result.penalty,
-                    net: stage.result.net,
-                    words: stage.result.words,
-                    penalty_words: stage.result.penaltyWords,
-                }),
-            });
+            const res = await fetch(`/api/mail/${mail.id}/start`, { method: "POST" });
             if (!res.ok) return;
-            const updated = await res.json();
-            // Update mails list with new data
-            setMails(prev => prev.map(m => m.id === updated.mail.id ? updated.mail : m));
-            // Go back to thread
-            const partner = getPartner(stage.mail, user.id);
-            setStage({ type: "thread", partnerId: partner.id, partnerInfo: partner });
+            const { started_at } = await res.json();
+            setStage({ type: "play-game", mail, serverStartedAt: started_at });
         } finally {
             setSending(false);
         }
@@ -806,7 +840,6 @@ export function MoggleMailView({ user, friends, onClose }: {
 
     const renderLeft = () => (
         <div style={{ width: 260, borderRight: "1px solid rgba(26,25,21,0.09)", flexShrink: 0, display: "flex", flexDirection: "column", height: "100%" }}>
-            {/* Header */}
             <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(26,25,21,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <TbMail style={{ width: 18, height: 18, color: "#1A3C34" }} />
@@ -822,7 +855,6 @@ export function MoggleMailView({ user, friends, onClose }: {
                 )}
             </div>
 
-            {/* New Mail button */}
             <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(26,25,21,0.07)" }}>
                 <button
                     onClick={() => setStage({ type: "pick-friend" })}
@@ -832,7 +864,6 @@ export function MoggleMailView({ user, friends, onClose }: {
                 </button>
             </div>
 
-            {/* Conversation list */}
             <div style={{ flex: 1, overflowY: "auto" }}>
                 {loading ? (
                     <div style={{ padding: 24, textAlign: "center", fontFamily: "var(--font-geist-mono)", fontSize: 12, color: "#8A8A8A" }}>Loading…</div>
@@ -867,7 +898,6 @@ export function MoggleMailView({ user, friends, onClose }: {
 
             return (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                    {/* Thread header */}
                     <div style={{ padding: "14px 24px", borderBottom: "1px solid rgba(26,25,21,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <button onClick={() => setStage({ type: "inbox" })} style={{ background: "none", border: "none", cursor: "pointer", color: "#8A8A8A", padding: 4, display: "flex" }}>
@@ -889,7 +919,6 @@ export function MoggleMailView({ user, friends, onClose }: {
                         )}
                     </div>
 
-                    {/* Messages */}
                     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
                         {sorted.map(mail => (
                             <MailCard
@@ -958,16 +987,17 @@ export function MoggleMailView({ user, friends, onClose }: {
             );
         }
 
-        // Game (composing, playing before send)
+        // Sender's game — plays before the mail is sent
         if (stage.type === "game") {
             return (
                 <div style={{ flex: 1, padding: "20px 28px", overflow: "auto" }}>
                     <div style={{ marginBottom: 16, fontFamily: "var(--font-geist-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "#8A8A8A" }}>
-                        Playing your game — results sent to friend after
+                        Play your game — your result is sent automatically when time&apos;s up
                     </div>
                     <MailGamePlayer
                         board={stage.board}
                         timeSeconds={stage.timeSeconds}
+                        serverStartedAt={null}
                         onComplete={handleGameComplete}
                         onCancel={() => setStage({ type: "inbox" })}
                     />
@@ -975,59 +1005,43 @@ export function MoggleMailView({ user, friends, onClose }: {
             );
         }
 
-        // Confirm send
-        if (stage.type === "confirm") {
-            const recipient = friends.find(f => f.user_id === stage.recipientId);
+        // Auto-sending the mail — shows score while API call runs
+        if (stage.type === "game-sent") {
             return (
-                <div style={{ flex: 1, padding: 28, maxWidth: 420 }}>
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "#8A8A8A", marginBottom: 6 }}>Your score</div>
-                        <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 100%)", borderRadius: 16, padding: "24px 28px" }}>
-                            <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 56, fontWeight: 700, color: "#EDE8DF", lineHeight: 1, marginBottom: 16 }}>{stage.result.net}</div>
-                            <div style={{ display: "flex", gap: 24 }}>
-                                <ScorePill label="Gross" value={stage.result.gross} color="#86EFAC" />
-                                <ScorePill label="Penalty" value={stage.result.penalty} color="#FCA5A5" />
-                                <div>
-                                    <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 14, fontWeight: 700, color: "#EDE8DF" }}>{stage.result.words.length}</div>
-                                    <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginTop: 2 }}>Words</div>
-                                </div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 24, padding: 28 }}>
+                    <div style={{ background: "linear-gradient(135deg, #1A3C34, #0F2016)", borderRadius: 20, padding: "32px 40px", textAlign: "center", border: "1px solid rgba(212,175,55,0.2)", minWidth: 220 }}>
+                        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em", color: "rgba(237,232,223,0.45)", marginBottom: 8 }}>Your Score</div>
+                        <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 72, fontWeight: 700, color: "#EDE8DF", lineHeight: 1, marginBottom: 20 }}>{stage.result.net}</div>
+                        <div style={{ display: "flex", gap: 28, justifyContent: "center" }}>
+                            <ScorePill label="Gross" value={stage.result.gross} color="#86EFAC" />
+                            <ScorePill label="Penalty" value={stage.result.penalty} color="#FCA5A5" />
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 20, fontWeight: 700, color: "#EDE8DF" }}>{stage.result.words.length}</div>
+                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginTop: 2 }}>Words</div>
                             </div>
                         </div>
                     </div>
-
-                    {recipient && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "12px 16px", background: "#fff", border: "1px solid #E6E4DD", borderRadius: 12 }}>
-                            <Avatar name={recipient.display_name ?? recipient.username} userId={recipient.user_id} size={32} />
-                            <div>
-                                <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 700, color: "#1A1A1A" }}>Sending to {recipient.display_name ?? recipient.username}</div>
-                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8A8A8A" }}>{stage.boardType} board · {fmtTime(stage.timeSeconds)}</div>
-                            </div>
+                    {sendError ? (
+                        <div style={{ textAlign: "center" }}>
+                            <div style={{ color: "#E63946", fontFamily: "var(--font-geist-sans)", fontSize: 13, marginBottom: 12 }}>{sendError}</div>
+                            <button
+                                onClick={() => setSendError("")}
+                                style={{ padding: "9px 20px", background: "#1A3C34", color: "#EDE8DF", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 600 }}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-geist-sans)", fontSize: 14, color: "#8A8A8A" }}>
+                            <TbLoader2 className="animate-spin" style={{ width: 18, height: 18 }} />
+                            Sending to friend…
                         </div>
                     )}
-
-                    {sendError && <div style={{ color: "#E63946", fontFamily: "var(--font-geist-sans)", fontSize: 12, marginBottom: 12 }}>{sendError}</div>}
-
-                    <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                            onClick={() => setStage({ type: "inbox" })}
-                            style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid #E6E4DD", borderRadius: 10, cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#666" }}
-                        >
-                            Discard
-                        </button>
-                        <button
-                            onClick={handleSendMail}
-                            disabled={sending}
-                            style={{ flex: 2, padding: "11px", background: "#1A3C34", color: "#EDE8DF", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, opacity: sending ? 0.7 : 1 }}
-                        >
-                            {sending ? <TbLoader2 style={{ animation: "spin 1s linear infinite", width: 16, height: 16 }} /> : <TbSend style={{ width: 15, height: 15 }} />}
-                            {sending ? "Sending…" : "Send Mail"}
-                        </button>
-                    </div>
                 </div>
             );
         }
 
-        // Play a received mail
+        // Recipient's game
         if (stage.type === "play-game") {
             const board = getBoardForPlay(stage.mail);
             return (
@@ -1038,6 +1052,7 @@ export function MoggleMailView({ user, friends, onClose }: {
                     <MailGamePlayer
                         board={board}
                         timeSeconds={stage.mail.time_seconds}
+                        serverStartedAt={stage.serverStartedAt}
                         onComplete={handlePlayComplete}
                         onCancel={() => {
                             const partner = getPartner(stage.mail, user.id);
@@ -1048,55 +1063,48 @@ export function MoggleMailView({ user, friends, onClose }: {
             );
         }
 
-        // Play result
-        if (stage.type === "play-result") {
+        // Auto-submitting recipient's result — shows score comparison while API call runs
+        if (stage.type === "play-sent") {
             const mail = stage.mail;
             const partner = getPartner(mail, user.id);
-            const myResult = stage.result;
+            const myNet = stage.result.net;
             const theirNet = mail.sender_net;
-            const myNet = myResult.net;
             const winner = myNet > theirNet ? "me" : myNet < theirNet ? "them" : "tie";
 
             return (
-                <div style={{ flex: 1, padding: 28, maxWidth: 420 }}>
-                    <h3 style={{ fontFamily: "var(--font-fraunces)", fontSize: 22, fontWeight: 700, color: "#1A1A1A", marginBottom: 20 }}>Game Over!</h3>
-
-                    <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 100%)", borderRadius: 16, padding: "20px 24px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ textAlign: "center" }}>
-                            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginBottom: 6 }}>You</div>
-                            <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 40, fontWeight: 700, color: winner === "me" ? "#D4AF37" : "#EDE8DF", lineHeight: 1 }}>{myNet}</div>
-                            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "rgba(237,232,223,0.4)", marginTop: 4 }}>{myResult.words.length} words</div>
-                        </div>
-                        <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 16, color: "rgba(237,232,223,0.35)", fontWeight: 700 }}>vs</div>
-                        <div style={{ textAlign: "center" }}>
-                            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginBottom: 6 }}>{partner.display_name ?? partner.username}</div>
-                            <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 40, fontWeight: 700, color: winner === "them" ? "#D4AF37" : "#EDE8DF", lineHeight: 1 }}>{theirNet}</div>
-                            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "rgba(237,232,223,0.4)", marginTop: 4 }}>{mail.sender_words.length} words</div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 24, padding: 28 }}>
+                    <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 100%)", borderRadius: 20, padding: "24px 32px", width: "100%", maxWidth: 360, border: "1px solid rgba(212,175,55,0.2)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginBottom: 6 }}>You</div>
+                                <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 48, fontWeight: 700, color: winner === "me" ? "#D4AF37" : "#EDE8DF", lineHeight: 1 }}>{myNet}</div>
+                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "rgba(237,232,223,0.4)", marginTop: 4 }}>{stage.result.words.length} words</div>
+                            </div>
+                            <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 18, color: "rgba(237,232,223,0.3)", fontWeight: 700 }}>vs</div>
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(237,232,223,0.45)", marginBottom: 6 }}>{partner.display_name ?? partner.username}</div>
+                                <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 48, fontWeight: 700, color: winner === "them" ? "#D4AF37" : "#EDE8DF", lineHeight: 1 }}>{theirNet}</div>
+                                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "rgba(237,232,223,0.4)", marginTop: 4 }}>{mail.sender_words.length} words</div>
+                            </div>
                         </div>
                     </div>
-
                     <div style={{
                         background: winner === "me" ? "rgba(212,175,55,0.12)" : winner === "them" ? "rgba(230,57,70,0.08)" : "rgba(26,60,52,0.06)",
                         border: `1px solid ${winner === "me" ? "rgba(212,175,55,0.3)" : winner === "them" ? "rgba(230,57,70,0.2)" : "rgba(26,60,52,0.12)"}`,
-                        borderRadius: 10, padding: "10px 16px", marginBottom: 20, textAlign: "center",
-                        fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 700,
+                        borderRadius: 10, padding: "10px 20px", textAlign: "center",
+                        fontFamily: "var(--font-geist-sans)", fontSize: 15, fontWeight: 700,
                         color: winner === "me" ? "#A0832E" : winner === "them" ? "#C0393F" : "#1A3C34",
                     }}>
                         {winner === "me" ? "🏆 You won!" : winner === "them" ? "Better luck next time!" : "It's a tie!"}
                     </div>
-
-                    {sendError && <div style={{ color: "#E63946", fontFamily: "var(--font-geist-sans)", fontSize: 12, marginBottom: 12 }}>{sendError}</div>}
-
-                    <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                            onClick={handleSubmitPlay}
-                            disabled={sending}
-                            style={{ flex: 1, padding: "11px", background: "#1A3C34", color: "#EDE8DF", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-                        >
-                            {sending ? <TbLoader2 style={{ animation: "spin 1s linear infinite", width: 16, height: 16 }} /> : <TbCheck style={{ width: 15, height: 15 }} />}
-                            {sending ? "Saving…" : "Confirm Result"}
-                        </button>
-                    </div>
+                    {sendError ? (
+                        <div style={{ color: "#E63946", fontFamily: "var(--font-geist-sans)", fontSize: 13 }}>{sendError}</div>
+                    ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-geist-sans)", fontSize: 14, color: "#8A8A8A" }}>
+                            <TbLoader2 className="animate-spin" style={{ width: 18, height: 18 }} />
+                            Saving result…
+                        </div>
+                    )}
                 </div>
             );
         }

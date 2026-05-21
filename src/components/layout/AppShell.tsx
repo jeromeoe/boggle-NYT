@@ -6,12 +6,10 @@ import { usePathname } from "next/navigation";
 import {
   TbBrain,
   TbChevronRight,
-  TbGridDots,
   TbLogout,
   TbMail,
   TbMenu2,
-  TbPuzzle,
-  TbSettings,
+  TbPlayerPlay,
   TbTrophy,
   TbUsers,
   TbWorld,
@@ -44,6 +42,7 @@ function NavLink({
   icon,
   active,
   badge,
+  notice,
   inset = false,
   onClick,
 }: {
@@ -52,6 +51,7 @@ function NavLink({
   icon?: React.ReactNode;
   active?: boolean;
   badge?: string;
+  notice?: number;
   inset?: boolean;
   onClick?: () => void;
 }) {
@@ -74,6 +74,15 @@ function NavLink({
       {badge && (
         <span style={{ fontFamily: "var(--font-geist-mono)" }} className="ml-auto rounded-full bg-[#D4AF37] px-[6px] py-[2px] text-[9px] font-bold uppercase tracking-[0.1em] text-[#111F1C]">
           {badge}
+        </span>
+      )}
+      {!!notice && (
+        <span
+          aria-label={`${notice} unread Moggle Mail`}
+          style={{ fontFamily: "var(--font-geist-mono)" }}
+          className="ml-auto flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#C83A2E] px-[5px] text-[9px] font-bold text-white shadow-[0_0_0_2px_rgba(17,31,28,0.9)]"
+        >
+          {notice > 9 ? "9+" : notice}
         </span>
       )}
     </Link>
@@ -121,6 +130,7 @@ export function AppShell({
   children,
   onSignOut,
   onDashboardClick,
+  mailUnread = 0,
 }: {
   user?: User | null;
   title?: string;
@@ -128,6 +138,7 @@ export function AppShell({
   children: React.ReactNode;
   onSignOut?: () => void;
   onDashboardClick?: () => void;
+  mailUnread?: number;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
@@ -153,17 +164,41 @@ export function AppShell({
       "dashboard");
   const multiplayerOpen = ["multiplayer", "live-mp", "friends-mp"].includes(activeId);
   const practiceOpen = ["practice", "zen", "puzzles"].includes(activeId);
+  const frameTitle = title ?? ({
+    dashboard: "",
+    singleplayer: "Singleplayer",
+    blitz: "Blitz",
+    rapid: "Rapid",
+    daily: "Daily Challenge",
+    zen: "Zen Mode",
+    practice: "Practice",
+    multiplayer: "Multiplayer",
+    "live-mp": "Multiplayer",
+    "friends-mp": "Friends Match",
+    mail: "Moggle Mail",
+    leaderboard: "Leaderboard",
+    rankings: "Rankings",
+    settings: "Settings",
+    puzzles: "Puzzles",
+    replay: "Game Review",
+  } as Record<string, string>)[activeId];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F9F7F1] text-[#1A1A1A]">
+    <div data-app-frame="true" className="flex h-screen overflow-hidden bg-[#F9F7F1] text-[#1A1A1A]">
       <NoiseOverlay />
       <aside
         style={{ width: sidebarOpen ? 230 : 0, transition: "width 220ms ease" }}
         className="relative z-20 flex flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-[#111F1C]"
       >
+        <div className="flex h-[52px] flex-shrink-0 items-center border-b border-white/[0.06] px-[18px]" style={{ minWidth: 230 }}>
+          <Link href="/" onClick={onDashboardClick} className="no-underline" style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF", fontSize: 18, fontWeight: 700, letterSpacing: "-0.03em" }}>
+            MOGGLE<span style={{ color: "#D4AF37" }}>.ORG</span>
+          </Link>
+        </div>
+
         <nav className="flex-1 overflow-y-auto pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ minWidth: 230 }}>
           <SectionLabel>Play</SectionLabel>
-          <GroupLink href="/play" label="Singleplayer" icon={<TbGridDots size={17} />} active={activeId === "singleplayer"} />
+          <GroupLink href="/play" label="Singleplayer" icon={<TbPlayerPlay size={17} />} active={activeId === "singleplayer"} />
           <NavLink href="/play/blitz" label="Blitz" icon={<TbBolt size={17} />} active={activeId === "blitz"} badge="1 min" inset />
           <NavLink href="/play/rapid" label="Rapid" icon={<TbClock size={17} />} active={activeId === "rapid"} badge="3 min" inset />
           <NavLink href="/play/daily" label="Daily Challenge" icon={<TbCalendar size={17} />} active={activeId === "daily"} inset />
@@ -186,12 +221,11 @@ export function AppShell({
           )}
 
           <SectionLabel>Mail</SectionLabel>
-          <NavLink href="/mail" label="Moggle Mail" icon={<TbMail size={17} />} active={activeId === "mail"} />
+          <NavLink href="/mail" label="Moggle Mail" icon={<TbMail size={17} />} active={activeId === "mail"} notice={mailUnread} />
 
           <SectionLabel>Community</SectionLabel>
           <NavLink href="/leaderboard" label="Leaderboard" icon={<TbTrophy size={17} />} active={activeId === "leaderboard"} />
           <NavLink href="/rankings" label="Rankings" icon={<TbWorld size={17} />} active={activeId === "rankings"} />
-          <NavLink href="/settings" label="Settings" icon={<TbSettings size={17} />} active={activeId === "settings"} />
         </nav>
 
         {user && (
@@ -224,25 +258,15 @@ export function AppShell({
             <TbMenu2 size={18} />
           </button>
 
-          <Link href="/" onClick={onDashboardClick} className="flex-shrink-0 no-underline" style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF", fontSize: 17, fontWeight: 700, letterSpacing: "-0.03em" }}>
-            MOGGLE<span style={{ color: "#D4AF37" }}>.ORG</span>
-          </Link>
-
-          {title && (
+          {frameTitle && (
             <>
-              <div className="h-[22px] w-px flex-shrink-0 bg-white/[0.08]" />
               <div style={{ fontFamily: "var(--font-geist-mono)" }} className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-[rgba(237,232,223,0.4)]">
-                {title}
+                {frameTitle}
               </div>
             </>
           )}
 
           <div className="flex-1" />
-
-          <Link href="/" onClick={onDashboardClick} className="hidden items-center gap-2 rounded-[8px] border border-white/[0.07] bg-white/[0.05] px-3 py-1.5 text-[12.5px] font-semibold text-[rgba(237,232,223,0.75)] no-underline transition-colors hover:bg-white/[0.1] sm:flex">
-            <TbGridDots size={14} />
-            Dashboard
-          </Link>
           {user && (
             <Link href="/settings" className="hidden items-center gap-2 rounded-[8px] border border-white/[0.07] bg-white/[0.05] py-1 pl-1 pr-3 text-[12.5px] font-semibold text-[rgba(237,232,223,0.8)] no-underline transition-colors hover:bg-white/[0.1] sm:flex">
               <div style={{ background: avatarColor(user.id) }} className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-[#111F1C]">

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { getTodaysLeaderboard } from "@/lib/supabase/leaderboard";
 import type { User, LeaderboardEntry } from "@/lib/supabase/client";
-import { TbGridDots, TbBrain, TbUsers, TbSettings, TbLogout, TbMenu2, TbMail, TbSend } from "react-icons/tb";
+import { TbBrain, TbPlayerPlay, TbUsers, TbSend } from "react-icons/tb";
 import { MoggleMailView } from "@/components/mail/MoggleMailView";
 import { findCandidateTrail, type CandidateTrail } from "@/lib/boggle/pathFinder";
 
@@ -137,232 +137,30 @@ interface PendingRequest {
   requester: { id: string; username: string; display_name: string | null };
 }
 
-// ── Dashboard topbar ──
-function DashboardTopbar({ user, onSignOut, onToggleSidebar, sidebarOpen }: {
-  user: User;
-  onSignOut: () => void;
-  onToggleSidebar: () => void;
-  sidebarOpen: boolean;
-}) {
-  const displayName = user.display_name || user.username;
-  const initial = displayName.charAt(0).toUpperCase();
-  const color = avatarColor(user.id);
-
-  return (
-    <header style={{ background: "#111F1C", borderBottom: "1px solid rgba(255,255,255,0.06)", height: 52, flexShrink: 0 }} className="flex items-center px-5 gap-5 z-30">
-      <button onClick={onToggleSidebar} style={{ color: sidebarOpen ? "rgba(237,232,223,0.6)" : "rgba(237,232,223,0.35)" }} className="hover:text-[#EDE8DF] transition-colors border-none bg-transparent cursor-pointer p-1 flex-shrink-0">
-        <TbMenu2 size={18} />
-      </button>
-
-      <div style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF", fontSize: 17, fontWeight: 700, letterSpacing: "-0.03em", flexShrink: 0 }}>
-        MOGGLE<span style={{ color: "#D4AF37" }}>.ORG</span>
-      </div>
-
-      <div className="flex-1" />
-
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <Link href="/settings" style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px 4px 6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, textDecoration: "none" }} className="hover:bg-white/10 transition-colors">
-          <div style={{ background: color, width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#EDE8DF", flexShrink: 0 }}>
-            {initial}
-          </div>
-          <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12.5, fontWeight: 600, color: "rgba(237,232,223,0.8)" }}>{displayName}</span>
-          <TbSettings size={13} style={{ color: "rgba(237,232,223,0.35)" }} />
-        </Link>
-        <button onClick={onSignOut} title="Sign out" style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(237,232,223,0.35)", padding: 6, borderRadius: 6 }} className="hover:text-[rgba(237,232,223,0.75)] hover:bg-white/5 transition-all">
-          <TbLogout size={17} />
-        </button>
-      </div>
-    </header>
-  );
-}
-
-// ── Sidebar ──
-function Sidebar({
-  user,
-  active,
-  onNav,
-  collapsed,
-  rating,
-  mailUnread,
-}: {
-  user: User;
-  active: string;
-  onNav: (id: string) => void;
-  collapsed: boolean;
-  rating?: number | null;
-  mailUnread?: number;
-}) {
-  const [playOpen, setPlayOpen] = useState(true);
-  const [practiceOpen, setPracticeOpen] = useState(false);
-
-  return (
-    <aside
-      style={{ width: collapsed ? 0 : 230, background: "#111F1C", transition: "width 220ms ease", overflow: "hidden", flexShrink: 0 }}
-      className="flex flex-col border-r border-white/[0.06]"
-    >
-      <nav className="flex-1 overflow-y-auto pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ minWidth: 230 }}>
-        {/* Play */}
-        <div className="mb-1">
-          <SectionLabel>Play</SectionLabel>
-          <NavItem icon="play" label="Singleplayer" isGroup open={playOpen} onToggle={() => setPlayOpen(!playOpen)} />
-          <div className="overflow-hidden transition-all duration-[220ms]" style={{ maxHeight: playOpen ? 200 : 0, opacity: playOpen ? 1 : 0 }}>
-            <SubItem id="blitz" label="Blitz" badge="1 min" active={active} onSelect={onNav} />
-            <SubItem id="rapid" label="Rapid" badge="3 min" active={active} onSelect={onNav} />
-            <SubItem id="daily" label="Daily Challenge" active={active} onSelect={onNav} />
-          </div>
-          <NavItem icon="users" label="Multiplayer" isGroup open={false} onToggle={() => onNav("live-mp")} badge="Beta" />
-          <div style={{ maxHeight: 120 }} className="overflow-hidden">
-            <SubItem id="live-mp" label="Live Multiplayer" active={active} onSelect={onNav} />
-            <SubItem id="friends-mp" label="Friends Match" active={active} onSelect={onNav} />
-          </div>
-        </div>
-
-        {/* Practice */}
-        <div className="mb-1">
-          <SectionLabel>Practice</SectionLabel>
-          <NavItem icon="brain" label="Practice" isGroup open={practiceOpen} onToggle={() => setPracticeOpen(!practiceOpen)} />
-          <div className="overflow-hidden transition-all duration-[220ms]" style={{ maxHeight: practiceOpen ? 200 : 0, opacity: practiceOpen ? 1 : 0 }}>
-            <SubItem id="micro" label="Microboards" active={active} onSelect={onNav} />
-            <SubItem id="zen" label="Zen Mode" active={active} onSelect={onNav} />
-            <SubItemLink id="puzzles" label="Puzzles" href="/puzzles" badge="New" active={active} />
-          </div>
-        </div>
-
-        {/* Moggle Mail */}
-        <div className="mb-1">
-          <SectionLabel>Mail</SectionLabel>
-          <div className="relative">
-            <NavItemLinkBadge icon="mail" label="Moggle Mail" onClick={() => onNav("mail")} active={active} id="mail" />
-            {(mailUnread ?? 0) > 0 && (
-              <span style={{ position: "absolute", top: 6, right: 18, background: "#E63946", color: "#fff", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-geist-mono)", fontSize: 9, fontWeight: 700, pointerEvents: "none" }}>
-                {mailUnread}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Community */}
-        <div className="mb-1">
-          <SectionLabel>Community</SectionLabel>
-          <NavItemLink icon="trophy" label="Leaderboard" href="/leaderboard" />
-          <NavItemLink icon="globe" label="Rankings" href="/rankings" />
-        </div>
-      </nav>
-
-      {/* User card */}
-      <div className="p-[14px] border-t border-white/[0.07] flex-shrink-0" style={{ minWidth: 230 }}>
-        <Link href="/settings" className="flex items-center gap-[10px] p-[10px_12px] bg-white/5 border border-white/[0.08] rounded-[10px] hover:bg-white/[0.09] transition-colors no-underline">
-          <div style={{ background: avatarColor(user.id) }} className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold text-[#111F1C] flex-shrink-0">
-            {(user.display_name || user.username).charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-bold text-[#EDE8DF] flex items-center gap-[6px]">
-              <span className="truncate">{user.display_name || user.username}</span>
-              {rating != null && <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#D4AF37", fontWeight: 700, flexShrink: 0 }}>{rating}</span>}
-            </div>
-            <div style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(237,232,223,0.35)" }} className="text-[10.5px] font-semibold">Settings</div>
-          </div>
-          <span className="text-[rgba(237,232,223,0.35)] hover:text-[rgba(237,232,223,0.8)] transition-colors">
-            <Ico d={ICONS.settings} size={15} />
-          </span>
-        </Link>
-      </div>
-    </aside>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/25 px-[18px] pt-[10px] pb-1">
-      {children}
-    </div>
-  );
-}
-
-function NavItem({ icon, label, badge, isGroup, open, onToggle }: {
-  icon: keyof typeof ICONS; label: string; badge?: string;
-  isGroup?: boolean; open?: boolean; onToggle: () => void;
-}) {
-  return (
-    <button onClick={onToggle} className="flex items-center gap-[10px] px-[18px] py-[9px] text-[rgba(237,232,223,0.6)] text-[13px] font-medium w-full text-left border-none bg-transparent cursor-pointer hover:text-[#EDE8DF] hover:bg-white/5 transition-all" style={{ fontFamily: "var(--font-geist-sans)" }}>
-      <span className="w-[18px] h-[18px] flex-shrink-0 opacity-70"><Ico d={ICONS[icon]} size={17} /></span>
-      <span>{label}</span>
-      {badge && <span style={{ fontFamily: "var(--font-geist-mono)" }} className="ml-auto text-[9px] font-bold uppercase tracking-[0.1em] bg-[#D4AF37] text-[#111F1C] px-[6px] py-[2px] rounded-full">{badge}</span>}
-      {isGroup && (
-        <svg style={{ marginLeft: badge ? 0 : "auto", width: 14, height: 14, opacity: 0.4, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
-      )}
-    </button>
-  );
-}
-
-function NavItemLink({ icon, label, href }: {
-  icon: keyof typeof ICONS; label: string; href: string;
-}) {
-  return (
-    <Link href={href} className="flex items-center gap-[10px] px-[18px] py-[9px] text-[rgba(237,232,223,0.6)] text-[13px] font-medium w-full text-left border-none bg-transparent cursor-pointer hover:text-[#EDE8DF] hover:bg-white/5 transition-all no-underline" style={{ fontFamily: "var(--font-geist-sans)", display: "flex" }}>
-      <span className="w-[18px] h-[18px] flex-shrink-0 opacity-70"><Ico d={ICONS[icon]} size={17} /></span>
-      <span>{label}</span>
-    </Link>
-  );
-}
-
-function NavItemLinkBadge({ icon, label, onClick, active, id }: {
-  icon: keyof typeof ICONS; label: string; onClick: () => void; active: string; id: string;
-}) {
-  const isActive = active === id;
-  return (
-    <button onClick={onClick} className={`flex items-center gap-[10px] px-[18px] py-[9px] text-[13px] font-medium w-full text-left border-none cursor-pointer hover:text-[#EDE8DF] hover:bg-white/5 transition-all relative ${isActive ? "text-[#EDE8DF] bg-white/5" : "text-[rgba(237,232,223,0.6)]"} bg-transparent`} style={{ fontFamily: "var(--font-geist-sans)" }}>
-      {isActive && <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-[#D4AF37] rounded-r-[3px]" />}
-      <span className="w-[18px] h-[18px] flex-shrink-0 opacity-70"><Ico d={ICONS[icon]} size={17} /></span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function SubItem({ id, label, badge, active, onSelect }: {
-  id: string; label: string; badge?: string; active: string; onSelect: (id: string) => void;
-}) {
-  const isActive = active === id;
-  return (
-    <button onClick={() => onSelect(id)} className={`flex items-center gap-2 py-[7px] pl-[42px] pr-[18px] text-[12.5px] w-full text-left border-none bg-transparent cursor-pointer transition-all relative ${isActive ? "text-[#EDE8DF]" : "text-[rgba(237,232,223,0.42)] hover:text-[rgba(237,232,223,0.8)] hover:bg-white/[0.04]"}`} style={{ fontFamily: "var(--font-geist-sans)" }}>
-      {isActive && <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-[#D4AF37] rounded-r-[3px]" />}
-      <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${isActive ? "bg-[#D4AF37]" : "bg-[rgba(237,232,223,0.25)]"}`} />
-      <span>{label}</span>
-      {badge && <span style={{ fontFamily: "var(--font-geist-mono)", background: "rgba(212,175,55,0.15)", color: "#D4AF37" }} className="ml-auto text-[9px] px-[5px] py-[2px] rounded-[4px]">{badge}</span>}
-    </button>
-  );
-}
-
-function SubItemLink({ id, label, href, badge, active }: {
-  id: string; label: string; href: string; badge?: string; active: string;
-}) {
-  const isActive = active === id;
-  return (
-    <Link href={href} className={`flex items-center gap-2 py-[7px] pl-[42px] pr-[18px] text-[12.5px] w-full text-left border-none bg-transparent cursor-pointer transition-all relative no-underline ${isActive ? "text-[#EDE8DF]" : "text-[rgba(237,232,223,0.42)] hover:text-[rgba(237,232,223,0.8)] hover:bg-white/[0.04]"}`} style={{ fontFamily: "var(--font-geist-sans)", display: "flex" }}>
-      {isActive && <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-[#D4AF37] rounded-r-[3px]" />}
-      <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${isActive ? "bg-[#D4AF37]" : "bg-[rgba(237,232,223,0.25)]"}`} />
-      <span>{label}</span>
-      {badge && <span style={{ fontFamily: "var(--font-geist-mono)", background: "rgba(212,175,55,0.15)", color: "#D4AF37" }} className="ml-auto text-[9px] px-[5px] py-[2px] rounded-[4px]">{badge}</span>}
-    </Link>
-  );
-}
-
-// ── Mini board tile ──
+// ── Mini board tile — mirrors real Tile component exactly ──
 function MiniTile({ letter, lit, found, skeleton }: { letter: string; lit: boolean; found: boolean; skeleton: boolean }) {
-  let bg: string, border: string, color: string;
   if (skeleton) {
-    bg = "rgba(237,232,223,0.05)"; border = "rgba(237,232,223,0.08)"; color = "rgba(237,232,223,0.15)";
-  } else if (found) {
-    bg = "rgba(45,106,79,0.28)"; border = "rgba(45,106,79,0.45)"; color = "#BDC8C3";
-  } else if (lit) {
-    bg = "rgba(212,175,55,0.32)"; border = "rgba(212,175,55,0.55)"; color = "#EDE8DF";
-  } else {
-    bg = "rgba(237,232,223,0.07)"; border = "rgba(237,232,223,0.13)"; color = "rgba(237,232,223,0.5)";
+    return (
+      <div style={{ background: "rgba(237,232,223,0.08)", border: "1px solid rgba(237,232,223,0.12)", width: 46, height: 46, borderRadius: 9, transition: "none" }} className="flex-shrink-0 animate-pulse" />
+    );
   }
   return (
-    <div style={{ background: bg, border: `1px solid ${border}`, width: 40, height: 40, transition: "background 280ms, border-color 280ms" }} className="rounded-[7px] flex items-center justify-center flex-shrink-0">
-      <span style={{ fontFamily: "var(--font-geist-mono)", color, fontSize: 12, fontWeight: 700, lineHeight: 1 }}>
-        {skeleton ? "?" : letter}
+    <div
+      style={{
+        background: lit ? "#1A3C34" : found ? "rgba(45,106,79,0.12)" : "#F9F7F1",
+        border: `1px solid ${lit ? "#0F2016" : found ? "rgba(45,106,79,0.3)" : "#E6E4DD"}`,
+        color: lit ? "#F9F7F1" : found ? "#2D6A4F" : "#1A1A1A",
+        width: 46, height: 46, borderRadius: 9,
+        boxShadow: lit
+          ? "0 4px 14px -2px rgba(26,60,52,0.5), inset 0 -2px 0 rgba(0,0,0,0.15)"
+          : "2px 2px 0 0 rgba(26,60,52,0.08), inset 0 -2px 0 rgba(0,0,0,0.04)",
+        transform: lit ? "scale(1.08) translateY(-1px)" : "scale(1)",
+        transition: "background 220ms, border-color 220ms, box-shadow 220ms, color 220ms, transform 220ms",
+      }}
+      className="flex items-center justify-center flex-shrink-0"
+    >
+      <span style={{ fontFamily: "var(--font-fraunces)", fontSize: 17, fontWeight: 700, lineHeight: 1 }}>
+        {letter}
       </span>
     </div>
   );
@@ -525,37 +323,47 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
           )}
         </div>
 
-        <div className="flex-shrink-0" style={{ position: "relative", width: 172, height: 172 }}>
-          {!loading && !result?.played && (
-            <svg style={{ position: "absolute", inset: 0, width: 172, height: 172, zIndex: 0, pointerEvents: "none", overflow: "visible" }}>
-              {Array.from(litEdges).map(edge => {
-                const [a, b] = edge.split("-");
-                const [r1, c1] = a.split(",").map(Number);
-                const [r2, c2] = b.split(",").map(Number);
+        {/* Board preview — tile 46px + gap 6px = step 52px, center offset = 23px */}
+        <div className="flex-shrink-0" style={{ position: "relative" }}>
+          <div style={{
+            background: "rgba(249,247,241,0.07)",
+            border: "1px solid rgba(237,232,223,0.12)",
+            borderRadius: 16,
+            padding: 12,
+            boxShadow: "0 8px 32px -8px rgba(0,0,0,0.35)",
+            position: "relative",
+          }}>
+            {/* Pathfinder SVG — same stroke as real Board component */}
+            {!loading && !result?.played && (
+              <svg style={{ position: "absolute", inset: 12, width: "calc(100% - 24px)", height: "calc(100% - 24px)", zIndex: 0, pointerEvents: "none", overflow: "visible" }}>
+                {Array.from(litEdges).map(edge => {
+                  const [a, b] = edge.split("-");
+                  const [r1, c1] = a.split(",").map(Number);
+                  const [r2, c2] = b.split(",").map(Number);
+                  return (
+                    <line key={edge}
+                      x1={c1 * 52 + 23} y1={r1 * 52 + 23}
+                      x2={c2 * 52 + 23} y2={r2 * 52 + 23}
+                      stroke="#1A3C34" strokeWidth={4} strokeLinecap="round" opacity={0.55}
+                    />
+                  );
+                })}
+              </svg>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 46px)", gap: 6, position: "relative", zIndex: 1 }}>
+              {previewBoard.map((letter, i) => {
+                const r = Math.floor(i / 4), c = i % 4;
                 return (
-                  <line key={edge}
-                    x1={c1 * 44 + 20} y1={r1 * 44 + 20}
-                    x2={c2 * 44 + 20} y2={r2 * 44 + 20}
-                    stroke="#D4AF37" strokeWidth={2.5} strokeLinecap="round" opacity={0.55}
-                    style={{ transition: "opacity 300ms" }}
+                  <MiniTile
+                    key={i}
+                    letter={letter}
+                    lit={!loading && !result?.played && litCells.has(`${r},${c}`)}
+                    found={false}
+                    skeleton={loading}
                   />
                 );
               })}
-            </svg>
-          )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 40px)", gap: 4, position: "relative", zIndex: 1 }}>
-            {previewBoard.map((letter, i) => {
-              const r = Math.floor(i / 4), c = i % 4;
-              return (
-                <MiniTile
-                  key={i}
-                  letter={letter}
-                  lit={!loading && !result?.played && litCells.has(`${r},${c}`)}
-                  found={false}
-                  skeleton={loading}
-                />
-              );
-            })}
+            </div>
           </div>
         </div>
       </div>
@@ -935,7 +743,7 @@ function PlayModeModal({ onClose, onSingleplayer, onMultiplayer, onPractice }: {
             style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "#1A3C34", border: "none", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}
             className="hover:brightness-110 transition-all"
           >
-            <TbGridDots size={22} style={{ color: "#D4AF37", flexShrink: 0 }} />
+            <TbPlayerPlay size={22} style={{ color: "#D4AF37", flexShrink: 0 }} />
             <div>
               <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 700, color: "#EDE8DF" }}>Singleplayer</div>
               <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "rgba(237,232,223,0.5)", marginTop: 2 }}>Blitz, Rapid, or Daily Challenge</div>
@@ -972,7 +780,7 @@ function PlayModeModal({ onClose, onSingleplayer, onMultiplayer, onPractice }: {
   );
 }
 
-// ── Main Dashboard ──
+// ── Main account view ──
 export interface DashboardProps {
   user: User;
   initialActive?: string;
@@ -1083,18 +891,7 @@ export function Dashboard({ user, initialActive = "daily", onPlayDaily, onStartG
 
   return (
     <>
-      <div className="flex flex-col h-screen overflow-hidden bg-[#F9F7F1]">
-        <DashboardTopbar
-          user={user}
-          onSignOut={onSignOut}
-          onToggleSidebar={() => setSidebarOpen(v => !v)}
-          sidebarOpen={sidebarOpen}
-        />
-
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar user={user} active={active} onNav={handleNav} collapsed={!sidebarOpen} rating={rating} mailUnread={mailUnread} />
-
-          <div className="flex-1 overflow-y-auto bg-[#F9F7F1]">
+      <div className="min-h-full bg-[#F9F7F1]">
             {showMail ? (
               <div style={{ height: "100%", overflow: "hidden" }}>
                 <MoggleMailView
@@ -1149,8 +946,6 @@ export function Dashboard({ user, initialActive = "daily", onPlayDaily, onStartG
 
               </div>
             )}
-          </div>
-        </div>
       </div>
 
       {showPlayModal && (

@@ -6,7 +6,6 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import type { GameStats, User } from "@/lib/supabase/client";
-import { AppShell } from "@/components/layout/AppShell";
 import { TbTrophy, TbClock, TbLetterCase, TbAlertTriangle } from "react-icons/tb";
 
 const AV_COLORS = ["#1A3C34", "#2D6A4F", "#9B2226", "#5C4033", "#6B4F9E", "#1A5B8A", "#7A3F00"];
@@ -127,7 +126,7 @@ export default function ReplayPage() {
     : 0;
 
   return (
-    <AppShell user={user} title="Game Review" active="replay">
+    <>
       <div className="max-w-5xl mx-auto px-6 py-10">
         {/* Game header */}
         <div className="mb-8">
@@ -288,6 +287,6 @@ export default function ReplayPage() {
           </Link>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

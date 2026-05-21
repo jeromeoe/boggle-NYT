@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { AppShell } from "@/components/layout/AppShell";
 
 export default function PuzzlesPage() {
   return (
-    <AppShell title="Puzzles" active="puzzles">
+    <>
       <div className="flex min-h-full flex-col items-center justify-center px-6 py-12 text-center">
         <div className="flex flex-col items-center gap-6 max-w-sm">
         <div
@@ -55,10 +54,10 @@ export default function PuzzlesPage() {
             textDecoration: "none",
           }}
         >
-          ← Back to Dashboard
+          ← Back to Home
         </Link>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

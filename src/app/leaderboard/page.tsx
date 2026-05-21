@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase/client";
 import { getLeaderboardForDate, getRecentDates } from "@/lib/supabase/leaderboard";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import type { LeaderboardEntry, User } from "@/lib/supabase/client";
-import { AppShell } from "@/components/layout/AppShell";
 import { TbArrowLeft, TbArrowRight, TbTrophy, TbCalendar } from "react-icons/tb";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -76,7 +75,7 @@ export default function LeaderboardPage() {
   const userEntry = user ? entries.find(e => e.user_id === user.id) : null;
 
   return (
-    <AppShell user={user} title="Leaderboard" active="leaderboard">
+    <>
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Page title */}
         <div className="mb-8">
@@ -264,6 +263,6 @@ export default function LeaderboardPage() {
           </Link>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

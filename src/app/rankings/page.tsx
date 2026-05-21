@@ -5,7 +5,6 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import type { User } from "@/lib/supabase/client";
-import { AppShell } from "@/components/layout/AppShell";
 import { TbStar, TbChartBar, TbFlame, TbTrophy } from "react-icons/tb";
 
 const AV_COLORS = ["#1A3C34", "#2D6A4F", "#9B2226", "#5C4033", "#6B4F9E", "#1A5B8A", "#7A3F00"];
@@ -100,7 +99,7 @@ export default function RankingsPage() {
   ];
 
   return (
-    <AppShell user={user} title="Rankings" active="rankings">
+    <>
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Title */}
         <div className="mb-8">
@@ -250,6 +249,6 @@ export default function RankingsPage() {
           </Link>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

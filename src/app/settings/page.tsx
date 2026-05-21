@@ -28,7 +28,6 @@ import {
     TbLoader2,
     TbRefresh,
 } from "react-icons/tb";
-import { AppShell } from "@/components/layout/AppShell";
 import { getCurrentUser, signOut } from "@/lib/supabase/auth";
 import type { User } from "@/lib/supabase/client";
 import {
@@ -224,7 +223,7 @@ export default function SettingsPage() {
     const showVerifyBanner = !isVerified && !verifyBannerDismissed && !meLoading;
 
     return (
-        <AppShell user={user} title="Settings" active="settings" onSignOut={handleSignOut}>
+        <>
             <div className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-12">
                 {/* Header */}
                 <div className="mb-8">
@@ -643,7 +642,7 @@ export default function SettingsPage() {
                     </button>
                 </motion.div>
             </div>
-        </AppShell>
+        </>
     );
 }
 
