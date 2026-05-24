@@ -248,7 +248,7 @@ export function AppShell({
         )}
       </aside>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <header className="flex h-[52px] flex-shrink-0 items-center gap-5 border-b border-white/[0.06] bg-[#111F1C] px-5">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
