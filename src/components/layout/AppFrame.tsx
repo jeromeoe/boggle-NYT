@@ -63,9 +63,20 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   }, [user?.id, pathname]);
 
   const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
-  const isLanding = pathname === "/" && loaded && !user;
 
-  if (isPublicPath || isLanding || !loaded) {
+  // Routes served by <MoggleApp/>. When logged out these render <LandingPage/>,
+  // which brings its own AppShell (guest mode) — so AppFrame must NOT wrap them,
+  // or the guest would see two shells. Standalone public pages (leaderboard,
+  // rankings, …) still get AppShell here even when logged out.
+  const isMoggleAppRoute =
+    pathname === "/" ||
+    pathname.startsWith("/play") ||
+    pathname.startsWith("/practice") ||
+    pathname.startsWith("/mail") ||
+    pathname.startsWith("/multiplayer");
+  const guestLanding = loaded && !user && isMoggleAppRoute;
+
+  if (isPublicPath || guestLanding || !loaded) {
     return <>{children}</>;
   }
 
@@ -73,6 +84,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     <AppShell
       user={user}
       mailUnread={mailUnread}
+      onAuth={user ? undefined : () => { window.location.href = "/"; }}
       onSignOut={() => {
         signOut();
         setUser(null);

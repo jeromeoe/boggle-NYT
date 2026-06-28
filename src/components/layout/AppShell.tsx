@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -19,6 +19,7 @@ import {
 } from "react-icons/tb";
 import type { User } from "@/lib/supabase/client";
 import NoiseOverlay from "@/components/shared/noise-overlay";
+import { Engraving } from "@/components/shared/Engraving";
 
 const AV_COLORS = ["#1A3C34", "#2D6A4F", "#9B2226", "#5C4033", "#6B4F9E", "#1A5B8A", "#7A3F00"];
 
@@ -130,6 +131,7 @@ export function AppShell({
   children,
   onSignOut,
   onDashboardClick,
+  onAuth,
   mailUnread = 0,
 }: {
   user?: User | null;
@@ -138,10 +140,28 @@ export function AppShell({
   children: React.ReactNode;
   onSignOut?: () => void;
   onDashboardClick?: () => void;
+  /** Guest mode: when there's no user, the sidebar footer shows sign-up / sign-in CTAs. */
+  onAuth?: (mode: "signup" | "signin") => void;
   mailUnread?: number;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Two independent concerns: a mobile off-canvas drawer (default closed) and a
+  // desktop collapse (default open). One hamburger drives whichever applies.
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const pathname = usePathname();
+
+  // Always close the mobile drawer after navigating.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const toggleSidebar = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+      setDesktopCollapsed((v) => !v);
+    } else {
+      setMobileOpen((v) => !v);
+    }
+  };
   const displayName = user?.display_name || user?.username || "Guest";
   const initial = displayName.charAt(0).toUpperCase();
   const activeId =
@@ -184,15 +204,29 @@ export function AppShell({
   } as Record<string, string>)[activeId];
 
   return (
-    <div data-app-frame="true" className="flex h-screen overflow-hidden bg-[#F9F7F1] text-[#1A1A1A]">
+    <div data-app-frame="true" className="flex h-screen overflow-hidden bg-parchment text-soft-black">
       <NoiseOverlay />
+
+      {/* Mobile drawer backdrop */}
+      <div
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+        className={`fixed inset-0 z-40 bg-black/55 transition-opacity duration-200 md:hidden ${
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
       <aside
-        style={{ width: sidebarOpen ? 230 : 0, transition: "width 220ms ease" }}
-        className="relative z-20 flex flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-[#111F1C]"
+        className={`fixed inset-y-0 left-0 z-50 flex w-[230px] flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-baize-deep transition-transform duration-200 ease-out md:static md:z-20 md:translate-x-0 md:transition-[width] ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        } ${desktopCollapsed ? "md:w-0" : "md:w-[230px]"}`}
       >
         <div className="flex h-[52px] flex-shrink-0 items-center border-b border-white/[0.06] px-[18px]" style={{ minWidth: 230 }}>
-          <Link href="/" onClick={onDashboardClick} className="no-underline" style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF", fontSize: 18, fontWeight: 700, letterSpacing: "-0.03em" }}>
-            MOGGLE<span style={{ color: "#D4AF37" }}>.ORG</span>
+          <Link href="/" onClick={onDashboardClick} className="flex items-center gap-[9px] no-underline">
+            <Engraving src="/marks/tile-m.svg" className="h-[26px] w-[26px] flex-shrink-0 drop-shadow-[1px_1px_0_rgba(0,0,0,0.25)]" style={{ color: "#EDE8DF" }} />
+            <span style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF", fontSize: 18, fontWeight: 700, letterSpacing: "-0.03em" }}>
+              MOGGLE<span style={{ color: "#D4AF37" }}>.ORG</span>
+            </span>
           </Link>
         </div>
 
@@ -228,7 +262,7 @@ export function AppShell({
           <NavLink href="/rankings" label="Rankings" icon={<TbWorld size={17} />} active={activeId === "rankings"} />
         </nav>
 
-        {user && (
+        {user ? (
           <div className="flex-shrink-0 border-t border-white/[0.07] p-[14px]" style={{ minWidth: 230 }}>
             <Link href="/settings" className="flex items-center gap-[10px] rounded-[10px] border border-white/[0.08] bg-white/5 p-[10px_12px] no-underline transition-colors hover:bg-white/[0.09]">
               <div style={{ background: avatarColor(user.id) }} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-[#111F1C]">
@@ -245,15 +279,33 @@ export function AppShell({
               <TbChevronRight size={15} className="text-[rgba(237,232,223,0.35)]" />
             </Link>
           </div>
-        )}
+        ) : onAuth ? (
+          <div className="flex flex-shrink-0 flex-col gap-2 border-t border-white/[0.07] p-[14px]" style={{ minWidth: 230 }}>
+            <button
+              onClick={() => onAuth("signup")}
+              style={{ fontFamily: "var(--font-geist-sans)", boxShadow: "0 4px 12px -2px rgba(212,175,55,0.35)" }}
+              className="flex items-center justify-center rounded-[10px] border-none bg-brass px-4 py-[11px] text-[13px] font-bold text-baize-deep transition-all hover:brightness-110"
+            >
+              Create Free Account
+            </button>
+            <button
+              onClick={() => onAuth("signin")}
+              style={{ fontFamily: "var(--font-geist-sans)" }}
+              className="flex items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.06] px-4 py-[9px] text-[13px] font-medium text-[rgba(237,232,223,0.7)] transition-all hover:bg-white/10 hover:text-[#EDE8DF]"
+            >
+              Sign In
+            </button>
+          </div>
+        ) : null}
       </aside>
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[52px] flex-shrink-0 items-center gap-5 border-b border-white/[0.06] bg-[#111F1C] px-5">
+        <header className="flex h-[52px] flex-shrink-0 items-center gap-5 border-b border-white/[0.06] bg-baize-deep px-4 sm:px-5">
           <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="flex-shrink-0 cursor-pointer border-none bg-transparent p-1 text-[rgba(237,232,223,0.45)] transition-colors hover:text-[#EDE8DF]"
-            title={sidebarOpen ? "Hide navigation" : "Show navigation"}
+            onClick={toggleSidebar}
+            aria-label="Toggle navigation"
+            className="flex-shrink-0 cursor-pointer rounded-[6px] border-none bg-transparent p-1.5 text-[rgba(237,232,223,0.45)] transition-colors hover:bg-white/5 hover:text-[#EDE8DF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brass"
+            title="Toggle navigation"
           >
             <TbMenu2 size={18} />
           </button>

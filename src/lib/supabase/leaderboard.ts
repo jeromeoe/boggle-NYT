@@ -1,6 +1,33 @@
 import { supabase } from './client';
 import type { LeaderboardEntry } from './client';
 
+type LeaderboardRow = Omit<LeaderboardEntry, 'username' | 'display_name' | 'custom_tag'> & {
+    users: {
+        username: string;
+        display_name: string | null;
+        custom_tag: string | null;
+    };
+};
+
+interface AllTimeGameRow {
+    user_id: string;
+    net_score: number | null;
+    users: {
+        username: string;
+        display_name: string | null;
+    };
+}
+
+interface AllTimeLeaderboardEntry {
+    user_id: string;
+    username: string;
+    display_name: string | null;
+    total_games: number;
+    best_score: number;
+    avg_score: number;
+    total_score: number;
+}
+
 // All daily boundaries reset at Singapore midnight (UTC+8)
 function getSingaporeDate(): string {
     return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -10,7 +37,7 @@ function getSingaporeDate(): string {
  * Submit a game result to the database
  */
 export async function submitGameResult(
-    userId: string,
+    _userId: string,
     gameData: {
         grossScore: number;
         penaltyScore: number;
@@ -26,6 +53,7 @@ export async function submitGameResult(
     try {
         const res = await fetch('/api/game/submit', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(gameData),
         });
@@ -76,11 +104,11 @@ export async function getLeaderboardForDate(date: string, limit: number = 50): P
 
         if (error) throw error;
 
-        return (data || []).map((entry: any, index: number) => ({
+        return ((data || []) as unknown as LeaderboardRow[]).map((entry, index) => ({
             ...entry,
             rank: index + 1,
             username: entry.users.username,
-            display_name: entry.users.display_name,
+            display_name: entry.users.display_name ?? undefined,
             custom_tag: entry.users.custom_tag ?? null,
         }));
     } catch (error) {
@@ -124,12 +152,13 @@ export function getRecentDates(days: number): string[] {
 /**
  * Get all-time top players
  */
-export async function getAllTimeLeaderboard(limit: number = 50): Promise<any[]> {
+export async function getAllTimeLeaderboard(limit: number = 50): Promise<AllTimeLeaderboardEntry[]> {
     try {
         const { data, error } = await supabase
             .from('game_stats')
             .select(`
         user_id,
+        net_score,
         users!inner(username, display_name)
       `)
             .eq('is_daily_challenge', true)
@@ -139,9 +168,9 @@ export async function getAllTimeLeaderboard(limit: number = 50): Promise<any[]> 
         if (error) throw error;
 
         // Group by user and calculate stats
-        const userStats = new Map();
+        const userStats = new Map<string, AllTimeLeaderboardEntry>();
 
-        (data || []).forEach((game: any) => {
+        ((data || []) as unknown as AllTimeGameRow[]).forEach((game) => {
             const userId = game.user_id;
             if (!userStats.has(userId)) {
                 userStats.set(userId, {
@@ -156,9 +185,10 @@ export async function getAllTimeLeaderboard(limit: number = 50): Promise<any[]> 
             }
 
             const stats = userStats.get(userId);
+            if (!stats) return;
             stats.total_games += 1;
-            stats.total_score += game.net_score;
-            stats.best_score = Math.max(stats.best_score, game.net_score);
+            stats.total_score += game.net_score ?? 0;
+            stats.best_score = Math.max(stats.best_score, game.net_score ?? 0);
         });
 
         // Calculate averages and sort

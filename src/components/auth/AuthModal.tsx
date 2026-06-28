@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn, signUp, saveUserSession, forgotPassword } from "@/lib/supabase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User } from "@/lib/supabase/client";
 import { TbEye, TbEyeOff, TbMailCheck } from "react-icons/tb";
+import { Engraving } from "@/components/shared/Engraving";
 
 type AuthMode = "signin" | "signup" | "forgot" | "verify_pending";
 
@@ -13,9 +14,10 @@ interface AuthModalProps {
     onClose: () => void;
     onAuthSuccess: (user: User) => void;
     initialMode?: "signin" | "signup";
+    initialInfoMessage?: string;
 }
 
-export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signin" }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signin", initialInfoMessage = "" }: AuthModalProps) {
     const [mode, setMode] = useState<AuthMode>(initialMode);
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -23,7 +25,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
     const [email, setEmail] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [error, setError] = useState("");
-    const [infoMessage, setInfoMessage] = useState("");
+    const [infoMessage, setInfoMessage] = useState(initialInfoMessage);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -41,6 +43,10 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
         setShowPassword(false);
         setShowConfirmPassword(false);
     };
+
+    useEffect(() => {
+        setInfoMessage(initialInfoMessage);
+    }, [initialInfoMessage]);
 
     const switchMode = (next: AuthMode) => {
         resetFields();
@@ -139,6 +145,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
 
                         {/* Header */}
                         <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] text-[#F9F7F1] p-6 text-center">
+                            <Engraving src="/marks/emblem.svg" className="mx-auto mb-3 h-16 w-16" style={{ color: "#D4AF37" }} />
                             <h2 className="text-2xl font-serif font-bold">{TITLES[mode].heading}</h2>
                             {TITLES[mode].sub && (
                                 <p className="text-sm text-[#8A9A90] mt-1">{TITLES[mode].sub}</p>

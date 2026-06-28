@@ -16,10 +16,10 @@ import { MultiplayerView } from "@/components/multiplayer/MultiplayerView";
 import { ChallengeNotification } from "@/components/multiplayer/ChallengeNotification";
 import type { GameMode } from "@/components/game/GameModeModal";
 import { WhatsNewPopup } from "@/components/shared/WhatsNewPopup";
-import { getCurrentUser, signOut } from "@/lib/supabase/auth";
+import { getAuthenticatedUser, getCurrentUser, signOut } from "@/lib/supabase/auth";
 import type { User } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { findCandidateTrail } from "@/lib/boggle/pathFinder";
 import { getPathfinderEnabled, PREF_KEYS } from "@/lib/preferences";
 import { TbTrophy, TbBulb } from "react-icons/tb";
@@ -63,13 +63,14 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
   } = useGameLogic();
 
   const [currInput, setCurrInput] = useState("");
-  const [pathfinderEnabled, setPathfinderEnabledState] = useState(true);
+  const [pathfinderEnabled, setPathfinderEnabledState] = useState(() => getPathfinderEnabled());
 
   const candidateTrail = useMemo(
     () => (pathfinderEnabled && gameActive && currInput && board.length > 0 ? findCandidateTrail(currInput, board) : undefined),
     [currInput, board, gameActive, pathfinderEnabled]
   );
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => getCurrentUser());
+  const [authMessage, setAuthMessage] = useState("");
   const [showingDashboard, setShowingDashboard] = useState(initialView === "dashboard" || initialView === "mail");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -92,11 +93,54 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
     setShowModeModal(false);
   };
 
+  const requireDailySession = useCallback(async (): Promise<User | null> => {
+    const authUser = await getAuthenticatedUser();
+    if (authUser) {
+      setUser(authUser);
+      setAuthMessage("");
+      return authUser;
+    }
+
+    setUser(null);
+    setShowingDashboard(false);
+    setAuthMessage("Your session expired. Sign in again before playing Daily Challenge so your score is saved.");
+    return null;
+  }, []);
+
+  const handleStartDailyChallenge = useCallback(async () => {
+    const authUser = await requireDailySession();
+    if (!authUser) return;
+    setShowingDashboard(false);
+    setActiveTab("play");
+    startDailyChallenge();
+  }, [requireDailySession, startDailyChallenge]);
+
+  const handleNavigateDaily = useCallback(async () => {
+    const authUser = await requireDailySession();
+    if (!authUser) {
+      router.push("/play/daily");
+      return;
+    }
+    router.push("/play/daily");
+  }, [requireDailySession, router]);
+
   // Load user session on mount
   useEffect(() => {
     const currentUser = getCurrentUser();
-    if (currentUser) setUser(currentUser);
-  }, []);
+    if (currentUser) {
+      getAuthenticatedUser().then((authUser) => {
+        if (authUser) {
+          setUser(authUser);
+          return;
+        }
+
+        setUser(null);
+        if (initialView === "daily") {
+          setAuthMessage("Your session expired. Sign in again before playing Daily Challenge so your score is saved.");
+        }
+      }).catch(() => {});
+    }
+  }, [initialView]);
 
   useEffect(() => {
     if (!dictionaryLoaded || !user || initialViewHandledRef.current) return;
@@ -104,28 +148,29 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
 
     if (initialView === "dashboard" || initialView === "mail") return;
 
-    setShowingDashboard(false);
+    Promise.resolve().then(() => {
+      setShowingDashboard(false);
 
-    if (initialView === "practice") {
-      setActiveTab("practice");
-      return;
-    }
+      if (initialView === "practice") {
+        setActiveTab("practice");
+        return;
+      }
 
-    if (["multiplayer", "live-mp", "friends-mp"].includes(initialView)) {
-      setActiveTab("multiplayer");
-      return;
-    }
+      if (["multiplayer", "live-mp", "friends-mp"].includes(initialView)) {
+        setActiveTab("multiplayer");
+        return;
+      }
 
-    setActiveTab("play");
-    if (initialView === "blitz") startBlitz();
-    else if (initialView === "rapid") startRapid();
-    else if (initialView === "daily") startDailyChallenge();
-    else if (initialView === "zen") startZen();
-  }, [dictionaryLoaded, user, initialView, startBlitz, startRapid, startDailyChallenge, startZen]);
+      setActiveTab("play");
+      if (initialView === "blitz") startBlitz();
+      else if (initialView === "rapid") startRapid();
+      else if (initialView === "daily") handleStartDailyChallenge();
+      else if (initialView === "zen") startZen();
+    });
+  }, [dictionaryLoaded, user, initialView, startBlitz, startRapid, handleStartDailyChallenge, startZen]);
 
   // Load pathfinder preference and keep it in sync across tabs / return from /settings
   useEffect(() => {
-    setPathfinderEnabledState(getPathfinderEnabled());
     const onStorage = (e: StorageEvent) => {
       if (e.key === PREF_KEYS.pathfinderEnabled) {
         setPathfinderEnabledState(getPathfinderEnabled());
@@ -177,7 +222,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
   }
 
   if (!user) {
-    return <LandingPage onAuthSuccess={(u) => { setUser(u); setShowingDashboard(initialView === "dashboard" || initialView === "mail"); }} />;
+    return <LandingPage authMessage={authMessage} onAuthSuccess={(u) => { setAuthMessage(""); setUser(u); setShowingDashboard(initialView === "dashboard" || initialView === "mail"); }} />;
   }
 
   // Show dashboard when signed in and not actively in a game
@@ -188,7 +233,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
           user={user}
           initialActive={initialView === "mail" ? "mail" : undefined}
           onPlayDaily={() => {
-            router.push("/play/daily");
+            handleNavigateDaily();
           }}
           onStartGame={() => {
             router.push("/play");
@@ -266,7 +311,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
             {/* Daily Challenge Banner */}
             {!gameActive && (
               <DailyChallengeBanner
-                onStartDaily={startDailyChallenge}
+                onStartDaily={handleStartDailyChallenge}
                 isActive={gameActive}
                 hasPlayed={isDailyReplay}
               />

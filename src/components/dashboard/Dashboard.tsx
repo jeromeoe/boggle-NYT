@@ -5,9 +5,11 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { getTodaysLeaderboard } from "@/lib/supabase/leaderboard";
 import type { User, LeaderboardEntry } from "@/lib/supabase/client";
-import { TbBrain, TbPlayerPlay, TbUsers, TbSend } from "react-icons/tb";
+import { TbBrain, TbPlayerPlay, TbUsers, TbSend, TbX } from "react-icons/tb";
 import { MoggleMailView } from "@/components/mail/MoggleMailView";
 import { findCandidateTrail, type CandidateTrail } from "@/lib/boggle/pathFinder";
+import { getReducedMotionEnabled } from "@/lib/preferences";
+import { Engraving } from "@/components/shared/Engraving";
 
 // ── Singapore date (matches leaderboard daily boundary) ──
 function getSingaporeDate() {
@@ -231,6 +233,12 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
     if (loading || result?.played || !previewTrails.length) {
       setLitCells(new Set()); setLitEdges(new Set()); return;
     }
+    // Honor reduced motion: show one static lit trail instead of cycling.
+    if (getReducedMotionEnabled()) {
+      setLitCells(previewTrails[0].activeCells);
+      setLitEdges(previewTrails[0].activeEdges);
+      return;
+    }
     let idx = 0;
     const t = setInterval(() => {
       const trail = previewTrails[idx % previewTrails.length];
@@ -245,9 +253,7 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
 
   return (
     <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 60%, #162E20 100%)", border: "1px solid rgba(212,175,55,0.2)", boxShadow: "0 8px 32px -4px rgba(26,25,21,0.18)" }} className="relative rounded-[18px] p-7 overflow-hidden">
-      <div style={{ background: "linear-gradient(to right, transparent, #D4AF37 40%, #D4AF37 60%, transparent)" }} className="absolute top-0 left-0 right-0 h-[2px]" />
       <div style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.06) 1px, transparent 0)", backgroundSize: "28px 28px" }} className="absolute inset-0 pointer-events-none" />
-      <div style={{ background: "radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 70%)" }} className="absolute -right-10 -top-10 w-[280px] h-[280px] pointer-events-none" />
 
       <div className="relative flex items-start justify-between gap-6">
         <div className="flex-1 min-w-0 pt-[2px]">
@@ -408,7 +414,7 @@ function QuickPlayCards({ onBlitz, onRapid, onDaily }: {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3 mt-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
       {modes.map((m) => (
         <button
           key={m.label}
@@ -444,7 +450,7 @@ function StatCards({ stats, rating, loading }: { stats: UserStats | null; rating
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {cards.map((c) => (
         <div key={c.label} className="bg-white border border-[#E6E4DD] rounded-[12px] p-4" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
           <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[9.5px] uppercase tracking-[0.15em] text-[#8A8A8A] mb-2">{c.label}</div>
@@ -466,7 +472,8 @@ function RecentGames({ games, loading }: { games: GameStatRow[]; loading: boolea
   if (loading) return <div className="text-[13px] text-[#8A8A8A] py-4" style={{ fontFamily: "var(--font-geist-mono)" }}>Loading...</div>;
 
   if (games.length === 0) return (
-    <div className="bg-white border border-[#E6E4DD] rounded-[14px] p-6 text-center" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
+    <div className="bg-white border border-[#E6E4DD] rounded-[14px] p-8 text-center flex flex-col items-center" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
+      <Engraving src="/marks/games.svg" className="h-16 w-16 mb-3 text-ink-accent opacity-55" />
       <p style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-semibold text-[#1A3C34] mb-1">No games yet</p>
       <p className="text-[12px] text-[#8A8A8A]">Play your first game to see your history here.</p>
     </div>
@@ -521,7 +528,8 @@ function LeaderboardStrip({ entries, userId, loading }: { entries: LeaderboardEn
       {loading ? (
         <div style={{ fontFamily: "var(--font-geist-mono)" }} className="px-[18px] py-8 text-center text-[12px] text-[#8A8A8A]">Loading...</div>
       ) : entries.length === 0 ? (
-        <div className="px-[18px] py-8 text-center">
+        <div className="px-[18px] py-8 text-center flex flex-col items-center">
+          <Engraving src="/marks/scores.svg" className="h-16 w-16 mb-3 text-ink-accent opacity-55" />
           <p style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-semibold text-[#1A3C34] mb-1">No scores yet today</p>
           <p className="text-[12px] text-[#8A8A8A]">Be the first to play!</p>
         </div>
@@ -531,7 +539,7 @@ function LeaderboardStrip({ entries, userId, loading }: { entries: LeaderboardEn
           const name = r.display_name || r.username || "Player";
           const color = avatarColor(r.user_id ?? String(i));
           return (
-            <div key={r.user_id} className={`flex items-center gap-3 px-[18px] py-[10px] border-b border-[#E6E4DD] last:border-b-0 transition-colors ${isYou ? "bg-[rgba(212,175,55,0.06)] border-l-[3px] border-l-[#D4AF37] pl-[15px]" : "hover:bg-[#F9F7F1]"}`}>
+            <div key={r.user_id} className={`flex items-center gap-3 px-[18px] py-[10px] border-b border-[#E6E4DD] last:border-b-0 transition-colors ${isYou ? "bg-[rgba(212,175,55,0.12)]" : "hover:bg-[#F9F7F1]"}`}>
               <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A] w-[22px] text-center flex-shrink-0">
                 {MEDALS[i] ?? `#${i + 1}`}
               </div>
@@ -670,8 +678,11 @@ function FriendsSection({ onSendMail }: { onSendMail?: (friendId: string) => voi
       {loading ? (
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#A8A49E" }}>Loading…</div>
       ) : friends.length === 0 ? (
-        <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "#A8A49E", lineHeight: 1.5 }}>
-          No friends yet.
+        <div className="flex flex-col items-center py-3 text-center">
+          <Engraving src="/marks/friends.svg" className="h-[60px] w-[60px] mb-2.5 text-ink-accent opacity-65" />
+          <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "#8A8A8A", lineHeight: 1.5 }}>
+            No friends yet — add a few to follow their scores.
+          </div>
         </div>
       ) : (
         <div>
@@ -726,15 +737,32 @@ function PlayModeModal({ onClose, onSingleplayer, onMultiplayer, onPractice }: {
   onMultiplayer: () => void;
   onPractice: () => void;
 }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(15,20,16,0.72)", backdropFilter: "blur(4px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}
     >
       <div
-        style={{ background: "#F9F7F1", borderRadius: 20, padding: "36px 32px", width: 460, maxWidth: "90vw", boxShadow: "0 24px 64px -8px rgba(15,20,16,0.35)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Choose a mode"
+        className="bg-parchment relative"
+        style={{ borderRadius: 20, padding: "36px 32px", width: 460, maxWidth: "90vw", boxShadow: "0 24px 64px -8px rgba(15,20,16,0.35)" }}
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border-none bg-transparent text-muted-ink transition-colors hover:bg-[rgba(26,25,21,0.06)] hover:text-soft-black"
+        >
+          <TbX size={18} />
+        </button>
         <div style={{ fontFamily: "var(--font-fraunces)", fontSize: 22, fontWeight: 700, color: "#1A1A1A", marginBottom: 4, letterSpacing: "-0.02em" }}>Choose a Mode</div>
         <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#8A8A8A", marginBottom: 24 }}>Pick how you want to play today.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -751,8 +779,8 @@ function PlayModeModal({ onClose, onSingleplayer, onMultiplayer, onPractice }: {
           </button>
           <button
             onClick={onPractice}
-            style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "#F0EEE8", border: "1px solid rgba(26,25,21,0.1)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}
-            className="hover:bg-[#E8E6E0] transition-all"
+            style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", border: "1px solid rgba(26,25,21,0.1)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}
+            className="bg-parchment-sunk hover:brightness-95 transition-all"
           >
             <TbBrain size={22} style={{ color: "#1A3C34", flexShrink: 0 }} />
             <div>
@@ -762,8 +790,8 @@ function PlayModeModal({ onClose, onSingleplayer, onMultiplayer, onPractice }: {
           </button>
           <button
             onClick={onMultiplayer}
-            style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "#F0EEE8", border: "1px solid rgba(26,25,21,0.1)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}
-            className="hover:bg-[#E8E6E0] transition-all"
+            style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", border: "1px solid rgba(26,25,21,0.1)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}
+            className="bg-parchment-sunk hover:brightness-95 transition-all"
           >
             <TbUsers size={22} style={{ color: "#1A3C34", flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
@@ -901,7 +929,7 @@ export function Dashboard({ user, initialActive = "daily", onPlayDaily, onStartG
                 />
               </div>
             ) : (
-              <div className="px-8 py-8 pb-16 flex gap-8 max-w-[1140px] w-full mx-auto items-start">
+              <div className="px-4 py-6 pb-16 sm:px-8 sm:py-8 flex flex-col lg:flex-row gap-8 max-w-[1140px] w-full mx-auto items-start">
 
                 <div className="flex-1 min-w-0 flex flex-col gap-0">
                   <DailyHero
@@ -937,7 +965,7 @@ export function Dashboard({ user, initialActive = "daily", onPlayDaily, onStartG
                   </div>
                 </div>
 
-                <div style={{ width: 200, flexShrink: 0, position: "sticky", top: 32, alignSelf: "flex-start", paddingLeft: 24, borderLeft: "1px solid rgba(26,25,21,0.09)" }}>
+                <div className="w-full flex-shrink-0 border-t border-[rgba(26,25,21,0.09)] pt-6 lg:w-[200px] lg:self-start lg:sticky lg:top-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
                   <FriendsSection onSendMail={(friendId) => {
                     const f = mailFriends.find(fr => fr.user_id === friendId);
                     if (f) { setShowMail(true); setActive("mail"); }

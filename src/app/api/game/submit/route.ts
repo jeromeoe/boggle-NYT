@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
         is_daily_challenge: d.isDailyChallenge,
     }).select().single();
 
-    if (error) return NextResponse.json({ error: 'Failed to save game' }, { status: 500 });
+    if (error) {
+        console.error('Failed to save game stats:', error);
+        return NextResponse.json({ error: 'Failed to save game' }, { status: 500 });
+    }
 
     if (d.isDailyChallenge) {
         const { error: lbError } = await db.from('daily_leaderboard').upsert(
@@ -60,7 +63,10 @@ export async function POST(req: NextRequest) {
             },
             { onConflict: 'user_id,challenge_date' }
         );
-        if (lbError) console.error('Failed to write leaderboard entry:', lbError);
+        if (lbError) {
+            console.error('Failed to write leaderboard entry:', lbError);
+            return NextResponse.json({ error: 'Failed to save leaderboard entry' }, { status: 500 });
+        }
     }
 
     return NextResponse.json({ ok: true, id: data.id });

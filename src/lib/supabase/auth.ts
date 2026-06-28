@@ -65,7 +65,40 @@ export function getCurrentUser(): User | null {
     try {
         return JSON.parse(userStr) as User;
     } catch {
+        localStorage.removeItem('boggle_user');
         return null;
+    }
+}
+
+/**
+ * Reconcile the local user cache with the real httpOnly server session.
+ * Use this before any action that must be persisted server-side.
+ */
+export async function getAuthenticatedUser(): Promise<User | null> {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const res = await fetch('/api/auth/me', {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+        });
+
+        if (!res.ok) {
+            localStorage.removeItem('boggle_user');
+            return null;
+        }
+
+        const data = await res.json().catch(() => ({ user: null }));
+        if (!data.user) {
+            localStorage.removeItem('boggle_user');
+            return null;
+        }
+
+        saveUserSession(data.user as User);
+        return data.user as User;
+    } catch {
+        return getCurrentUser();
     }
 }
 

@@ -202,7 +202,7 @@ export default function LeaderboardPage() {
                   key={entry.user_id}
                   className={`grid px-5 py-3.5 border-b border-[#E6E4DD] last:border-b-0 items-center transition-colors ${
                     isYou
-                      ? "bg-[rgba(212,175,55,0.06)] border-l-[3px] border-l-[#D4AF37] pl-[17px]"
+                      ? "bg-[rgba(212,175,55,0.12)]"
                       : i < 3
                       ? "bg-[rgba(26,60,52,0.02)] hover:bg-[#F5F3EE]"
                       : "hover:bg-[#F9F7F1]"

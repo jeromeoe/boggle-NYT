@@ -27,7 +27,7 @@ export function useGameLogic() {
     const [gameWasManual, setGameWasManual] = useState(false);
     const [isDailyChallenge, setIsDailyChallenge] = useState(false);
     const [isDailyReplay, setIsDailyReplay] = useState(false);
-    const [isCustomBoardLoaded, setIsCustomBoardLoaded] = useState(false);
+    const [, setIsCustomBoardLoaded] = useState(false);
     const [isGeneratingBoard, setIsGeneratingBoard] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
     const [hintCooldownMs, setHintCooldownMs] = useState(0);
@@ -78,19 +78,17 @@ export function useGameLogic() {
     // Check daily status on mount
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const userStr = localStorage.getItem('boggle_user');
-            if (userStr) {
-                try {
-                    const user = JSON.parse(userStr);
+            import('@/lib/supabase/auth')
+                .then(({ getAuthenticatedUser }) => getAuthenticatedUser())
+                .then((user) => {
+                    if (!user) return;
                     import('@/lib/supabase/leaderboard').then(({ hasPlayedDailyToday }) => {
                         hasPlayedDailyToday(user.id).then(played => {
                             if (played) setIsDailyReplay(true);
                         });
                     });
-                } catch (e) {
-                    console.error(e);
-                }
-            }
+                })
+                .catch((e) => console.error(e));
         }
     }, []);
 
@@ -102,48 +100,57 @@ export function useGameLogic() {
         // Read all values from refs to avoid stale closures —
         // refs are always current regardless of when this callback was created.
         if (isDailyChallengeRef.current && typeof window !== 'undefined') {
-            const userStr = localStorage.getItem('boggle_user');
-            if (userStr) {
-                try {
-                    const user = JSON.parse(userStr);
-                    if (!isDailyReplayRef.current) {
-                        const { submitGameResult } = await import('@/lib/supabase/leaderboard');
-
-                        const scores = calculateTotalScore(foundWordsRef.current, penalizedWordsRef.current);
-                        const gameDuration = GAME_DURATION - timeLeftRef.current;
-
-                        await submitGameResult(user.id, {
-                            grossScore: scores.gross,
-                            penaltyScore: scores.penalty,
-                            netScore: scores.net,
-                            wordsFound: foundWordsRef.current,
-                            wordsPenalized: penalizedWordsRef.current,
-                            totalPossibleWords: allPossibleWordsRef.current.size,
-                            durationSeconds: gameDuration,
-                            boardState: boardRef.current,
-                            isDailyChallenge: true
-                        });
-
-                        // Submit daily stats (streak + medals) — gated server-side on email verification
-                        const todayUTC = new Date().toISOString().slice(0, 10);
-                        fetch('/api/stats/daily', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                netScore: scores.net,
-                                grossScore: scores.gross,
-                                foundWords: foundWordsRef.current,
-                                allPossibleWords: Array.from(allPossibleWordsRef.current),
-                                challengeDate: todayUTC,
-                            }),
-                        }).catch(() => {}); // fire-and-forget
-
-                        setIsDailyReplay(true);
-                        console.log('Score submitted to leaderboard!');
-                    }
-                } catch (error) {
-                    console.error('Failed to submit score:', error);
+            try {
+                const { getAuthenticatedUser } = await import('@/lib/supabase/auth');
+                const user = await getAuthenticatedUser();
+                if (!user) {
+                    setStatusMessage("Sign in again to save your daily score.");
+                    return;
                 }
+
+                if (!isDailyReplayRef.current) {
+                    const { submitGameResult } = await import('@/lib/supabase/leaderboard');
+
+                    const scores = calculateTotalScore(foundWordsRef.current, penalizedWordsRef.current);
+                    const gameDuration = GAME_DURATION - timeLeftRef.current;
+
+                    const result = await submitGameResult(user.id, {
+                        grossScore: scores.gross,
+                        penaltyScore: scores.penalty,
+                        netScore: scores.net,
+                        wordsFound: foundWordsRef.current,
+                        wordsPenalized: penalizedWordsRef.current,
+                        totalPossibleWords: allPossibleWordsRef.current.size,
+                        durationSeconds: gameDuration,
+                        boardState: boardRef.current,
+                        isDailyChallenge: true
+                    });
+
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+
+                    // Submit daily stats (streak + medals) — gated server-side on email verification
+                    const todayUTC = new Date().toISOString().slice(0, 10);
+                    fetch('/api/stats/daily', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            netScore: scores.net,
+                            grossScore: scores.gross,
+                            foundWords: foundWordsRef.current,
+                            allPossibleWords: Array.from(allPossibleWordsRef.current),
+                            challengeDate: todayUTC,
+                        }),
+                    }).catch(() => {}); // fire-and-forget
+
+                    setIsDailyReplay(true);
+                    console.log('Score submitted to leaderboard!');
+                }
+            } catch (error) {
+                console.error('Failed to submit score:', error);
+                setStatusMessage("Couldn't save your daily score. Please check your connection and sign in again.");
             }
         }
     }, []); // stable — reads live values via refs, never needs to be recreated
@@ -286,19 +293,23 @@ export function useGameLogic() {
         try {
             // Check if user has played today
             if (typeof window !== 'undefined') {
-                const userStr = localStorage.getItem('boggle_user');
-                if (userStr) {
-                    try {
-                        const user = JSON.parse(userStr);
+                try {
+                    const { getAuthenticatedUser } = await import('@/lib/supabase/auth');
+                    const user = await getAuthenticatedUser();
+                    if (user) {
                         const { hasPlayedDailyToday } = await import('@/lib/supabase/leaderboard');
                         const alreadyPlayed = await hasPlayedDailyToday(user.id);
                         setIsDailyReplay(alreadyPlayed);
                         if (alreadyPlayed) {
                             console.log("Daily challenge already played today. Replay mode active (score will not be saved).");
                         }
-                    } catch (e) {
-                        console.error("Error checking daily status:", e);
+                    } else {
+                        setStatusMessage("Sign in to save your daily score.");
+                        setIsDailyChallenge(false);
+                        return;
                     }
+                } catch (e) {
+                    console.error("Error checking daily status:", e);
                 }
             }
 
