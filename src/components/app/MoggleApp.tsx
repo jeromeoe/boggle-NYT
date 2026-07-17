@@ -43,11 +43,13 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
     statusMessage,
     showResults,
     gameWasManual,
+    gameWasCompleted,
     allPossibleWords,
     isDailyReplay,
     isGeneratingBoard,
     isZenMode,
     hintCooldownMs,
+    zenHintCell,
 
     // Actions
     startGame,
@@ -387,6 +389,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
                   onTileClick={handleTileClick}
                   disabled={!gameActive}
                   candidateTrail={candidateTrail}
+                  hintCell={zenHintCell}
                 />
 
                 <GameControls
@@ -405,14 +408,17 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
                   onSubmit={handleSubmit}
                   gameActive={gameActive}
                   statusMessage={statusMessage}
+                  onHint={isZenMode ? useZenHint : undefined}
+                  hintReady={hintReady}
                 />
 
                 {isZenMode && gameActive && (
                   <button
                     type="button"
                     onClick={useZenHint}
+                    onMouseDown={(event) => event.preventDefault()}
                     disabled={!hintReady}
-                    title={hintReady ? "Reveal a Zen hint" : "Hint is recharging"}
+                    title={hintReady ? "Highlight a hint tile (Space)" : "Hint is recharging"}
                     className={`
                       relative w-full max-w-sm overflow-hidden rounded-lg border px-4 py-3
                       font-mono text-sm font-bold uppercase tracking-widest shadow-sm
@@ -428,7 +434,12 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       <TbBulb className="h-4 w-4" />
-                      {hintReady ? "Hint Ready" : `Hint ${Math.ceil(hintCooldownMs / 1000)}s`}
+                      {hintReady ? (
+                        <>
+                          Hint Ready
+                          <kbd className="rounded border border-white/35 bg-white/10 px-1.5 py-0.5 text-[10px] tracking-normal">Space</kbd>
+                        </>
+                      ) : `Hint ${Math.ceil(hintCooldownMs / 1000)}s`}
                     </span>
                   </button>
                 )}
@@ -463,6 +474,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
             penalty={scores.penalty}
             net={scores.net}
             wasManual={gameWasManual}
+            wasCompleted={gameWasCompleted}
           />
         )}
 

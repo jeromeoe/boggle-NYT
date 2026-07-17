@@ -12,6 +12,7 @@ interface ResultsReportProps {
     penalty: number;
     net: number;
     wasManual: boolean;
+    wasCompleted?: boolean;
 }
 
 export function ResultsReport({
@@ -22,7 +23,8 @@ export function ResultsReport({
     gross,
     penalty,
     net,
-    wasManual
+    wasManual,
+    wasCompleted = false,
 }: ResultsReportProps) {
     if (!isOpen) return null;
 
@@ -53,7 +55,7 @@ export function ResultsReport({
                         <div className="bg-white p-8 text-center relative border-b-2 border-[#1A3C34]">
                             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#1A3C34] via-[#D4AF37] to-[#1A3C34]" />
                             <h2 className="text-3xl md:text-4xl font-serif font-bold mb-2 tracking-tight text-[#1A3C34] mt-2">
-                                {wasManual ? "Session Ended" : "Time's Up"}
+                                {wasCompleted ? "Board Complete" : wasManual ? "Session Ended" : "Time's Up"}
                             </h2>
                             <div className="text-[#666666] font-mono text-sm uppercase tracking-widest mb-8">
                                 Performance Report

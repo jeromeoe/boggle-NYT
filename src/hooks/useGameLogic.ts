@@ -5,6 +5,7 @@ import { generateBoard, generateOpenBoard, generateClosedBoard, parseCustomBoard
 import type { GameMode } from "@/components/game/GameModeModal";
 import { findAllWords } from "@/lib/boggle/solver";
 import { calculateTotalScore } from "@/lib/boggle/scoring";
+import { findCandidateTrail } from "@/lib/boggle/pathFinder";
 import { useDictionary } from "@/hooks/useDictionary";
 
 const GAME_DURATION = 180; // 3 minutes
@@ -25,12 +26,14 @@ export function useGameLogic() {
     const [statusMessage, setStatusMessage] = useState("Loading dictionary...");
     const [showResults, setShowResults] = useState(false);
     const [gameWasManual, setGameWasManual] = useState(false);
+    const [gameWasCompleted, setGameWasCompleted] = useState(false);
     const [isDailyChallenge, setIsDailyChallenge] = useState(false);
     const [isDailyReplay, setIsDailyReplay] = useState(false);
     const [, setIsCustomBoardLoaded] = useState(false);
     const [isGeneratingBoard, setIsGeneratingBoard] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
     const [hintCooldownMs, setHintCooldownMs] = useState(0);
+    const [zenHintCell, setZenHintCell] = useState<string | null>(null);
 
     // Timer ref
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,6 +61,7 @@ export function useGameLogic() {
         if (!gameActive || !isZenMode) {
             hintReadyAtRef.current = 0;
             setHintCooldownMs(0);
+            setZenHintCell(null);
             return;
         }
 
@@ -92,9 +96,10 @@ export function useGameLogic() {
         }
     }, []);
 
-    const endGame = useCallback(async (manual: boolean) => {
+    const endGame = useCallback(async (manual: boolean, completed = false) => {
         setGameActive(false);
         setGameWasManual(manual);
+        setGameWasCompleted(completed);
         setShowResults(true);
 
         // Read all values from refs to avoid stale closures —
@@ -155,12 +160,12 @@ export function useGameLogic() {
         }
     }, []); // stable — reads live values via refs, never needs to be recreated
 
-    // Timer countdown — placed after endGame so the dep below is in scope
+    // Count down in timed modes and up in Zen so it doubles as a stopwatch.
     useEffect(() => {
-        if (!gameActive || timeLeft <= 0 || isZenMode) return;
+        if (!gameActive || (!isZenMode && timeLeft <= 0)) return;
 
         timerRef.current = setTimeout(() => {
-            setTimeLeft((prev) => prev - 1);
+            setTimeLeft((prev) => isZenMode ? prev + 1 : prev - 1);
         }, 1000);
 
         return () => {
@@ -174,6 +179,19 @@ export function useGameLogic() {
             endGame(false);
         }
     }, [gameActive, timeLeft, isZenMode, endGame]);
+
+    // Complete the board through the normal end-game path so results and
+    // Daily submissions stay consistent.
+    useEffect(() => {
+        if (
+            gameActive &&
+            allPossibleWords.size > 0 &&
+            foundWords.length === allPossibleWords.size
+        ) {
+            setStatusMessage("Board complete!");
+            endGame(false, true);
+        }
+    }, [gameActive, allPossibleWords.size, foundWords.length, endGame]);
 
     const startGame = useCallback(async (mode: GameMode = "random") => {
         if (!trie) return;
@@ -244,6 +262,7 @@ export function useGameLogic() {
 
         if (allPossibleWords.has(normalizedWord)) {
             setFoundWords((prev) => [...prev, normalizedWord]);
+            setZenHintCell(null);
             return { status: "valid" };
         } else {
             if (!isZenMode) {
@@ -274,12 +293,24 @@ export function useGameLogic() {
             return { status: "empty" };
         }
 
-        const word = candidates[Math.floor(Math.random() * Math.min(candidates.length, 20))];
-        setStatusMessage(`Hint: try ${word}`);
+        const hint = candidates
+            .map((word) => ({ trail: findCandidateTrail(word, board) }))
+            .find(({ trail }) => trail.activeCells.size > 0);
+
+        if (!hint) {
+            setStatusMessage("No hint is available for this board.");
+            return { status: "empty" };
+        }
+
+        // Sets preserve the pathfinder's traversal order, so reveal only the
+        // starting tile of the shortest unfound word instead of the word itself.
+        const cell = hint.trail.activeCells.values().next().value as string;
+        setZenHintCell(cell);
+        setStatusMessage("Hint: a tile from a shortest unfound word is highlighted.");
         hintReadyAtRef.current = Date.now() + ZEN_HINT_COOLDOWN_MS;
         setHintCooldownMs(ZEN_HINT_COOLDOWN_MS);
-        return { status: "hint", word };
-    }, [allPossibleWords, foundWords, gameActive, isZenMode]);
+        return { status: "hint", cell };
+    }, [allPossibleWords, board, foundWords, gameActive, isZenMode]);
 
 
 
@@ -392,6 +423,7 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(true);
+        setZenHintCell(null);
         hintReadyAtRef.current = 0;
         setHintCooldownMs(0);
         setStatusMessage(`Zen · ${possible.size} words`);
@@ -410,12 +442,14 @@ export function useGameLogic() {
         statusMessage,
         showResults,
         gameWasManual,
+        gameWasCompleted,
         allPossibleWords,
         isDailyChallenge,
         isDailyReplay,
         isGeneratingBoard,
         isZenMode,
         hintCooldownMs,
+        zenHintCell,
 
         // Actions
         startGame,

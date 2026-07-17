@@ -6,16 +6,26 @@ interface WordInputProps {
     onSubmit: () => void;
     gameActive: boolean;
     statusMessage: string;
+    onHint?: () => void;
+    hintReady?: boolean;
 }
 
-export function WordInput({ currInput, setCurrInput, onSubmit, gameActive, statusMessage }: WordInputProps) {
+export function WordInput({
+    currInput,
+    setCurrInput,
+    onSubmit,
+    gameActive,
+    statusMessage,
+    onHint,
+    hintReady = false,
+}: WordInputProps) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (gameActive) {
             inputRef.current?.focus();
         }
-    }, [gameActive, currInput]); // Keep focus when typing
+    }, [gameActive, currInput, statusMessage]); // Keep focus after typing, submissions, and hints
 
     return (
         <div className="w-full max-w-sm space-y-2">
@@ -25,7 +35,17 @@ export function WordInput({ currInput, setCurrInput, onSubmit, gameActive, statu
                     type="text"
                     value={currInput}
                     onChange={(e) => setCurrInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            onSubmit();
+                            return;
+                        }
+
+                        if (event.code === 'Space' && onHint) {
+                            event.preventDefault();
+                            if (hintReady) onHint();
+                        }
+                    }}
                     placeholder={gameActive ? "TYPE WORDS HERE..." : "Waiting to start..."}
                     disabled={!gameActive}
                     className={`

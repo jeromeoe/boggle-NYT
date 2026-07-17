@@ -5,22 +5,26 @@ interface TileProps {
     onClick: () => void;
     disabled?: boolean;
     isActive?: boolean;
+    isHinted?: boolean;
 }
 
-export function Tile({ letter, onClick, disabled, isActive }: TileProps) {
+export function Tile({ letter, onClick, disabled, isActive, isHinted }: TileProps) {
+    const highlighted = isActive || isHinted;
+
     return (
         <motion.button
             whileHover={!disabled ? { scale: 1.05, y: -2 } : {}}
             whileTap={!disabled ? { scale: 0.95 } : {}}
             animate={{
-                backgroundColor: isActive ? '#1A3C34' : '#F9F7F1',
-                color: isActive ? '#F9F7F1' : '#1A1A1A',
-                borderColor: isActive ? '#1A3C34' : '#E6E4DD',
-                scale: isActive ? 1.08 : 1,
+                backgroundColor: isHinted ? '#D4AF37' : isActive ? '#1A3C34' : '#F9F7F1',
+                color: isHinted ? '#111F1C' : isActive ? '#F9F7F1' : '#1A1A1A',
+                borderColor: isHinted ? '#9C7C12' : isActive ? '#1A3C34' : '#E6E4DD',
+                scale: highlighted ? 1.08 : 1,
             }}
             transition={{ duration: 0.12 }}
             onClick={onClick}
             disabled={disabled}
+            aria-label={`${letter === "QU" ? "Qu" : letter}${isHinted ? ", hint tile" : ""}`}
             className={`
         w-14 h-14 md:w-16 md:h-16
         font-serif text-2xl md:text-3xl font-bold

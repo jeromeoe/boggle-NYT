@@ -10,11 +10,12 @@ interface BoardProps {
     onTileClick: (letter: string) => void;
     disabled?: boolean;
     candidateTrail?: CandidateTrail;
+    hintCell?: string | null;
 }
 
 interface TilePos { x: number; y: number; }
 
-export function Board({ board, onTileClick, disabled, candidateTrail }: BoardProps) {
+export function Board({ board, onTileClick, disabled, candidateTrail, hintCell }: BoardProps) {
     const gridRef = useRef<HTMLDivElement>(null);
     const [tilePositions, setTilePositions] = useState<Record<string, TilePos>>({});
 
@@ -98,6 +99,7 @@ export function Board({ board, onTileClick, disabled, candidateTrail }: BoardPro
                                         onClick={() => onTileClick(letter)}
                                         disabled={disabled}
                                         isActive={activeCells.has(key)}
+                                        isHinted={hintCell === key}
                                     />
                                 </div>
                             );
