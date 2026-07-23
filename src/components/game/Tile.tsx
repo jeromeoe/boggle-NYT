@@ -37,7 +37,7 @@ export function Tile({ letter, onClick, disabled, isActive, isHinted }: TileProp
         hover:border-[#1A3C34] hover:text-[#1A3C34]
       `}
         >
-            {letter === "Q" ? "Qu" : letter}
+            {letter === "QU" ? "Qu" : letter}
         </motion.button>
     );
 }

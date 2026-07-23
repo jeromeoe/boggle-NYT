@@ -9,8 +9,15 @@ export const NEW_BOGGLE_DICE = [
     "AAEEGN", "ABBJOO", "ACHOPS", "AFFKPS",
     "AOOTTW", "CIMOTU", "DEILRX", "DELRVY",
     "DISTTY", "EEGHNW", "EEINSU", "EHRTVW",
-    "EIOSST", "ELRTTY", "HIMNUQU", "HLNNRZ"
+    "EIOSST", "ELRTTY", "HIMNQU", "HLNNRZ"
 ];
+
+function shuffleInPlace<T>(values: T[], random: () => number): void {
+    for (let i = values.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [values[i], values[j]] = [values[j], values[i]];
+    }
+}
 
 /**
  * Generate a random 4x4 Boggle board
@@ -18,7 +25,8 @@ export const NEW_BOGGLE_DICE = [
  */
 export function generateBoard(): string[][] {
     // Shuffle the dice
-    const shuffled = [...NEW_BOGGLE_DICE].sort(() => Math.random() - 0.5);
+    const shuffled = [...NEW_BOGGLE_DICE];
+    shuffleInPlace(shuffled, Math.random);
 
     // Roll each die and get a random face
     const boardLetters: string[] = [];
@@ -60,10 +68,7 @@ export function generateBoardWithSeed(seed: number): string[][] {
 
     // Shuffle the dice using seeded random
     const shuffled = [...NEW_BOGGLE_DICE];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
+    shuffleInPlace(shuffled, rng);
 
     // Roll each die using seeded random
     const boardLetters: string[] = [];

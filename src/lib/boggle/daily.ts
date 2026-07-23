@@ -1,20 +1,22 @@
 import { generateBoardWithSeed } from './dice';
+import { getSingaporeDate } from '../time/singapore';
 
-// Singapore is UTC+8. All daily boundaries reset at Singapore midnight.
-function getSingaporeDate(): string {
-    return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-}
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function getTodaysDailyBoard() {
-    const dateStr = getSingaporeDate(); // e.g. "2026-03-30" in Singapore time
-    const baseSeed = parseInt(dateStr.replace(/-/g, ''));
+export function getDailyBoardForDate(dateStr: string) {
+    if (!DATE_PATTERN.test(dateStr)) throw new Error('Daily Challenge date must be YYYY-MM-DD');
 
-    // Add day-of-week variety using Singapore date
-    const sgDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const dayOffset = sgDate.getUTCDay() * 7;
+    const baseSeed = Number.parseInt(dateStr.replace(/-/g, ''), 10);
+    const date = new Date(`${dateStr}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) throw new Error('Invalid Daily Challenge date');
 
+    const dayOffset = date.getUTCDay() * 7;
     const seed = baseSeed + dayOffset;
     const board = generateBoardWithSeed(seed);
 
     return { board, seed, date: dateStr };
+}
+
+export async function getTodaysDailyBoard() {
+    return getDailyBoardForDate(getSingaporeDate());
 }

@@ -26,10 +26,20 @@ import { TbTrophy, TbBulb } from "react-icons/tb";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { useRouter } from "next/navigation";
+import {
+  createSeededChallengeUrl,
+  getChallengeModeLabel,
+  type SeededChallenge,
+} from "@/lib/boggle/share";
 
 export type MoggleInitialView = "dashboard" | "mail" | "play" | "blitz" | "rapid" | "daily" | "zen" | "practice" | "multiplayer" | "live-mp" | "friends-mp";
 
-export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleInitialView }) {
+interface MoggleAppProps {
+  initialView?: MoggleInitialView;
+  initialChallenge?: SeededChallenge | null;
+}
+
+export function MoggleApp({ initialView = "dashboard", initialChallenge = null }: MoggleAppProps) {
   const router = useRouter();
   const {
     // State
@@ -50,9 +60,12 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
     isZenMode,
     hintCooldownMs,
     zenHintCell,
+    currentChallenge,
+    isSharedChallenge,
 
     // Actions
     startGame,
+    startSeededChallenge,
     startBlitz,
     startRapid,
     startZen,
@@ -81,16 +94,19 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
     initialView === "practice" ? "practice" : ["multiplayer", "live-mp", "friends-mp"].includes(initialView) ? "multiplayer" : "play"
   );
   const [pendingChallengeCode, setPendingChallengeCode] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState("");
   const initialViewHandledRef = useRef(false);
   const hintFillPercent = hintCooldownMs === 0 ? 100 : Math.max(0, Math.min(100, ((10000 - hintCooldownMs) / 10000) * 100));
   const hintReady = hintCooldownMs === 0;
 
   const handleSelectMode = (mode: GameMode) => {
+    setShareStatus("");
     startGame(mode);
     setShowModeModal(false);
   };
 
   const handleSelectCustom = (letters: string) => {
+    setShareStatus("");
     startCustomGameFromInput(letters);
     setShowModeModal(false);
   };
@@ -145,7 +161,7 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
   }, [initialView]);
 
   useEffect(() => {
-    if (!dictionaryLoaded || !user || initialViewHandledRef.current) return;
+    if (!dictionaryLoaded || (!user && !initialChallenge) || initialViewHandledRef.current) return;
     initialViewHandledRef.current = true;
 
     if (initialView === "dashboard" || initialView === "mail") return;
@@ -164,12 +180,44 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
       }
 
       setActiveTab("play");
+      if (initialChallenge) {
+        startSeededChallenge(initialChallenge);
+        return;
+      }
       if (initialView === "blitz") startBlitz();
       else if (initialView === "rapid") startRapid();
       else if (initialView === "daily") handleStartDailyChallenge();
       else if (initialView === "zen") startZen();
     });
-  }, [dictionaryLoaded, user, initialView, startBlitz, startRapid, handleStartDailyChallenge, startZen]);
+  }, [dictionaryLoaded, user, initialView, initialChallenge, startBlitz, startRapid, handleStartDailyChallenge, startZen, startSeededChallenge]);
+
+  const handleShareBoard = useCallback(async () => {
+    if (!currentChallenge || typeof window === 'undefined') return;
+
+    const url = createSeededChallengeUrl(window.location.origin, currentChallenge);
+    const modeLabel = getChallengeModeLabel(currentChallenge.mode);
+    const text = showResults
+      ? `I scored ${scores.net} on this Moggle ${modeLabel}. Can you beat me on the exact same board?`
+      : `Play this exact Moggle ${modeLabel} board and see how you score.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Moggle board challenge', text, url });
+        setShareStatus('Challenge shared');
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareStatus('Link copied');
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareStatus('Link copied');
+      } catch {
+        setShareStatus('Could not copy link');
+      }
+    }
+  }, [currentChallenge, scores.net, showResults]);
 
   // Load pathfinder preference and keep it in sync across tabs / return from /settings
   useEffect(() => {
@@ -223,12 +271,12 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
     );
   }
 
-  if (!user) {
+  if (!user && !initialChallenge) {
     return <LandingPage authMessage={authMessage} onAuthSuccess={(u) => { setAuthMessage(""); setUser(u); setShowingDashboard(initialView === "dashboard" || initialView === "mail"); }} />;
   }
 
   // Show dashboard when signed in and not actively in a game
-  if (showingDashboard && !gameActive) {
+  if (user && showingDashboard && !gameActive) {
     return (
       <>
         <Dashboard
@@ -310,6 +358,23 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
           <PracticeMode />
         ) : (
           <>
+            {isSharedChallenge && currentChallenge && (
+              <div className="mb-5 flex flex-col gap-2 rounded-xl border border-[#D4AF37]/40 bg-[#1A3C34] px-5 py-4 text-[#F9F7F1] shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-serif text-lg font-semibold">Friend challenge</div>
+                  <div className="text-sm text-[#EDE8DF]/80">
+                    Exact {getChallengeModeLabel(currentChallenge.mode).toLowerCase()} board, identical rules and clock.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleShareBoard}
+                  className="self-start rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] sm:self-auto"
+                >
+                  {shareStatus || 'Pass it on'}
+                </button>
+              </div>
+            )}
             {/* Daily Challenge Banner */}
             {!gameActive && (
               <DailyChallengeBanner
@@ -397,6 +462,8 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
                   onStart={() => setShowModeModal(true)}
                   onEnd={() => endGame(true)}
                   isLoading={isGeneratingBoard}
+                  onShare={currentChallenge ? handleShareBoard : undefined}
+                  shareStatus={shareStatus}
                 />
               </div>
 
@@ -475,6 +542,8 @@ export function MoggleApp({ initialView = "dashboard" }: { initialView?: MoggleI
             net={scores.net}
             wasManual={gameWasManual}
             wasCompleted={gameWasCompleted}
+            onShare={currentChallenge ? handleShareBoard : undefined}
+            shareStatus={shareStatus}
           />
         )}
 

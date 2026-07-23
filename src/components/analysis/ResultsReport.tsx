@@ -1,6 +1,7 @@
 "use client";
 
 import { analyzeCoreChains, analyzeAnagrams, getWordsByLength } from "@/lib/boggle/analytics";
+import { calculateScore } from "@/lib/boggle/scoring";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ResultsReportProps {
@@ -13,6 +14,8 @@ interface ResultsReportProps {
     net: number;
     wasManual: boolean;
     wasCompleted?: boolean;
+    onShare?: () => void;
+    shareStatus?: string;
 }
 
 export function ResultsReport({
@@ -25,6 +28,8 @@ export function ResultsReport({
     net,
     wasManual,
     wasCompleted = false,
+    onShare,
+    shareStatus,
 }: ResultsReportProps) {
     if (!isOpen) return null;
 
@@ -79,13 +84,7 @@ export function ResultsReport({
                                         // Calculate max possible score
                                         let maxScore = 0;
                                         allPossibleWords.forEach(word => {
-                                            const length = word.length;
-                                            if (length <= 4) maxScore += 1;
-                                            else if (length === 5) maxScore += 2;
-                                            else if (length === 6) maxScore += 3;
-                                            else if (length === 7) maxScore += 5;
-                                            else if (length === 8) maxScore += 7;
-                                            else maxScore += 11;
+                                            maxScore += calculateScore(word);
                                         });
                                         return maxScore;
                                     })()}</div>
@@ -178,7 +177,16 @@ export function ResultsReport({
                         </div>
 
                         {/* Footer */}
-                        <div className="p-4 border-t border-[#E6E4DD] bg-[#F9F7F1]">
+                        <div className={`grid grid-cols-1 gap-2 border-t border-[#E6E4DD] bg-[#F9F7F1] p-4 ${onShare ? 'sm:grid-cols-2' : ''}`}>
+                            {onShare && (
+                                <button
+                                    type="button"
+                                    onClick={onShare}
+                                    className="w-full rounded-lg border border-[#1A3C34]/25 bg-white py-3 font-semibold text-[#1A3C34] shadow-sm transition-colors hover:bg-[#F0EEE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3C34] focus-visible:ring-offset-2"
+                                >
+                                    {shareStatus || 'Challenge a friend'}
+                                </button>
+                            )}
                             <button
                                 onClick={onClose}
                                 className="w-full py-3 bg-[#1A3C34] hover:bg-[#142E28] text-[#F9F7F1] font-semibold rounded-lg transition-all shadow-md active:scale-[0.99]"

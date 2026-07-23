@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import type { LeaderboardEntry } from './client';
+import { getSingaporeDate } from '@/lib/time/singapore';
 
 type LeaderboardRow = Omit<LeaderboardEntry, 'username' | 'display_name' | 'custom_tag'> & {
     users: {
@@ -28,26 +29,16 @@ interface AllTimeLeaderboardEntry {
     total_score: number;
 }
 
-// All daily boundaries reset at Singapore midnight (UTC+8)
-function getSingaporeDate(): string {
-    return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-}
-
 /**
  * Submit a game result to the database
  */
 export async function submitGameResult(
-    _userId: string,
     gameData: {
-        grossScore: number;
-        penaltyScore: number;
-        netScore: number;
+        challengeDate: string;
         wordsFound: string[];
         wordsPenalized: string[];
-        totalPossibleWords: number;
         durationSeconds: number;
-        boardState: string[][];
-        isDailyChallenge: boolean;
+        isDailyChallenge: true;
     }
 ) {
     try {

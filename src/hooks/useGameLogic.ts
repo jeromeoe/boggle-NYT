@@ -1,16 +1,44 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { generateBoard, generateOpenBoard, generateClosedBoard, parseCustomBoard } from "@/lib/boggle/dice";
+import { generateBoardWithSeed, parseCustomBoard } from "@/lib/boggle/dice";
 import type { GameMode } from "@/components/game/GameModeModal";
 import { findAllWords } from "@/lib/boggle/solver";
 import { calculateTotalScore } from "@/lib/boggle/scoring";
 import { findCandidateTrail } from "@/lib/boggle/pathFinder";
 import { useDictionary } from "@/hooks/useDictionary";
+import type { Trie } from "@/lib/boggle/trie";
+import {
+    createRandomBoardSeed,
+    getChallengeModeLabel,
+    type SeededChallenge,
+} from "@/lib/boggle/share";
 
 const GAME_DURATION = 180; // 3 minutes
 const BLITZ_DURATION = 60;  // 1 minute
 const ZEN_HINT_COOLDOWN_MS = 10000;
+const SEED_STEP = 0x9E3779B9;
+
+function solveSeededBoard(trie: Trie, seed: number) {
+    const board = generateBoardWithSeed(seed);
+    return { board, possible: findAllWords(board, trie) };
+}
+
+function createSeededRound(trie: Trie, mode: GameMode) {
+    const initialSeed = createRandomBoardSeed();
+    let fallback = { ...solveSeededBoard(trie, initialSeed), seed: initialSeed };
+
+    for (let attempt = 0; attempt < 500; attempt++) {
+        const seed = (initialSeed + Math.imul(attempt, SEED_STEP)) >>> 0;
+        const candidate = { ...solveSeededBoard(trie, seed), seed };
+        fallback = candidate;
+        if (mode === 'random') return candidate;
+        if (mode === 'open' && candidate.possible.size >= 180) return candidate;
+        if (mode === 'closed' && candidate.possible.size < 50) return candidate;
+    }
+
+    return fallback;
+}
 
 export function useGameLogic() {
     // Dictionary (shared cache via useDictionary)
@@ -34,6 +62,8 @@ export function useGameLogic() {
     const [isZenMode, setIsZenMode] = useState(false);
     const [hintCooldownMs, setHintCooldownMs] = useState(0);
     const [zenHintCell, setZenHintCell] = useState<string | null>(null);
+    const [currentChallenge, setCurrentChallenge] = useState<SeededChallenge | null>(null);
+    const [isSharedChallenge, setIsSharedChallenge] = useState(false);
 
     // Timer ref
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,17 +73,14 @@ export function useGameLogic() {
     const foundWordsRef = useRef<string[]>([]);
     const penalizedWordsRef = useRef<string[]>([]);
     const timeLeftRef = useRef(0);
-    const allPossibleWordsRef = useRef<Set<string>>(new Set());
-    const boardRef = useRef<string[][]>([]);
     const isDailyChallengeRef = useRef(false);
     const isDailyReplayRef = useRef(false);
+    const dailyChallengeDateRef = useRef<string | null>(null);
     const hintReadyAtRef = useRef(0);
 
     useEffect(() => { foundWordsRef.current = foundWords; }, [foundWords]);
     useEffect(() => { penalizedWordsRef.current = penalizedWords; }, [penalizedWords]);
     useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
-    useEffect(() => { allPossibleWordsRef.current = allPossibleWords; }, [allPossibleWords]);
-    useEffect(() => { boardRef.current = board; }, [board]);
     useEffect(() => { isDailyChallengeRef.current = isDailyChallenge; }, [isDailyChallenge]);
     useEffect(() => { isDailyReplayRef.current = isDailyReplay; }, [isDailyReplay]);
 
@@ -116,42 +143,35 @@ export function useGameLogic() {
                 if (!isDailyReplayRef.current) {
                     const { submitGameResult } = await import('@/lib/supabase/leaderboard');
 
-                    const scores = calculateTotalScore(foundWordsRef.current, penalizedWordsRef.current);
                     const gameDuration = GAME_DURATION - timeLeftRef.current;
+                    const challengeDate = dailyChallengeDateRef.current;
+                    if (!challengeDate) throw new Error('Daily challenge date is missing.');
 
-                    const result = await submitGameResult(user.id, {
-                        grossScore: scores.gross,
-                        penaltyScore: scores.penalty,
-                        netScore: scores.net,
+                    const result = await submitGameResult({
+                        challengeDate,
                         wordsFound: foundWordsRef.current,
                         wordsPenalized: penalizedWordsRef.current,
-                        totalPossibleWords: allPossibleWordsRef.current.size,
                         durationSeconds: gameDuration,
-                        boardState: boardRef.current,
                         isDailyChallenge: true
                     });
 
-                    if (result.error) {
-                        throw new Error(result.error);
+                    if (result.error || !result.data) {
+                        throw new Error(result.error ?? 'Daily score submission failed.');
                     }
 
                     // Submit daily stats (streak + medals) — gated server-side on email verification
-                    const todayUTC = new Date().toISOString().slice(0, 10);
-                    fetch('/api/stats/daily', {
+                    const statsResponse = await fetch('/api/stats/daily', {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            netScore: scores.net,
-                            grossScore: scores.gross,
-                            foundWords: foundWordsRef.current,
-                            allPossibleWords: Array.from(allPossibleWordsRef.current),
-                            challengeDate: todayUTC,
-                        }),
-                    }).catch(() => {}); // fire-and-forget
+                        body: JSON.stringify({ gameId: result.data.id }),
+                    });
+                    if (!statsResponse.ok && statsResponse.status !== 403) {
+                        console.error('Daily stats update failed:', await statsResponse.text());
+                    }
 
                     setIsDailyReplay(true);
-                    console.log('Score submitted to leaderboard!');
+                    setStatusMessage('Daily score verified and saved.');
                 }
             } catch (error) {
                 console.error('Failed to submit score:', error);
@@ -201,14 +221,11 @@ export function useGameLogic() {
         // Use setTimeout to let React flush the generating state before the sync loop blocks
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-        let newBoard: string[][];
-        if (mode === "open") newBoard = generateOpenBoard(trie);
-        else if (mode === "closed") newBoard = generateClosedBoard(trie);
-        else newBoard = generateBoard();
-
-        const possible = findAllWords(newBoard, trie);
+        const { board: newBoard, possible, seed } = createSeededRound(trie, mode);
 
         setBoard(newBoard);
+        setCurrentChallenge({ seed, mode });
+        setIsSharedChallenge(false);
         setAllPossibleWords(possible);
         setFoundWords([]);
         setPenalizedWords([]);
@@ -222,6 +239,34 @@ export function useGameLogic() {
         setIsGeneratingBoard(false);
     }, [trie]);
 
+    const startSeededChallenge = useCallback(async (challenge: SeededChallenge) => {
+        if (!trie) return;
+        setIsGeneratingBoard(true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+        const { board: newBoard, possible } = solveSeededBoard(trie, challenge.seed);
+        const duration = challenge.mode === 'blitz' ? BLITZ_DURATION : challenge.mode === 'zen' ? 0 : GAME_DURATION;
+        const label = getChallengeModeLabel(challenge.mode);
+
+        setBoard(newBoard);
+        setCurrentChallenge(challenge);
+        setIsSharedChallenge(true);
+        setAllPossibleWords(possible);
+        setFoundWords([]);
+        setPenalizedWords([]);
+        setTimeLeft(duration);
+        setGameActive(true);
+        setShowResults(false);
+        setIsDailyChallenge(false);
+        setIsCustomBoardLoaded(false);
+        setIsZenMode(challenge.mode === 'zen');
+        setZenHintCell(null);
+        hintReadyAtRef.current = 0;
+        setHintCooldownMs(0);
+        setStatusMessage(`Shared ${label} · ${possible.size} words available`);
+        setIsGeneratingBoard(false);
+    }, [trie]);
+
     // Parses a 16-letter string, calculates all words, and starts the game in one batch.
     const startCustomGameFromInput = useCallback((input: string): boolean => {
         if (!trie) return false;
@@ -231,6 +276,8 @@ export function useGameLogic() {
         const possible = findAllWords(parsed, trie);
 
         setBoard(parsed);
+        setCurrentChallenge(null);
+        setIsSharedChallenge(false);
         setAllPossibleWords(possible);
         setFoundWords([]);
         setPenalizedWords([]);
@@ -352,6 +399,9 @@ export function useGameLogic() {
             const possible = findAllWords(newBoard, trie);
 
             setBoard(newBoard);
+            setCurrentChallenge(null);
+            setIsSharedChallenge(false);
+            dailyChallengeDateRef.current = dailyResult.date;
             setAllPossibleWords(possible);
             setFoundWords([]);
             setPenalizedWords([]);
@@ -371,9 +421,11 @@ export function useGameLogic() {
         if (!trie) return;
         setIsGeneratingBoard(true);
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        const newBoard = generateBoard();
-        const possible = findAllWords(newBoard, trie);
+        const seed = createRandomBoardSeed();
+        const { board: newBoard, possible } = solveSeededBoard(trie, seed);
         setBoard(newBoard);
+        setCurrentChallenge({ seed, mode: 'blitz' });
+        setIsSharedChallenge(false);
         setAllPossibleWords(possible);
         setFoundWords([]);
         setPenalizedWords([]);
@@ -391,9 +443,11 @@ export function useGameLogic() {
         if (!trie) return;
         setIsGeneratingBoard(true);
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        const newBoard = generateBoard();
-        const possible = findAllWords(newBoard, trie);
+        const seed = createRandomBoardSeed();
+        const { board: newBoard, possible } = solveSeededBoard(trie, seed);
         setBoard(newBoard);
+        setCurrentChallenge({ seed, mode: 'rapid' });
+        setIsSharedChallenge(false);
         setAllPossibleWords(possible);
         setFoundWords([]);
         setPenalizedWords([]);
@@ -411,9 +465,11 @@ export function useGameLogic() {
         if (!trie) return;
         setIsGeneratingBoard(true);
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        const newBoard = generateBoard();
-        const possible = findAllWords(newBoard, trie);
+        const seed = createRandomBoardSeed();
+        const { board: newBoard, possible } = solveSeededBoard(trie, seed);
         setBoard(newBoard);
+        setCurrentChallenge({ seed, mode: 'zen' });
+        setIsSharedChallenge(false);
         setAllPossibleWords(possible);
         setFoundWords([]);
         setPenalizedWords([]);
@@ -450,9 +506,12 @@ export function useGameLogic() {
         isZenMode,
         hintCooldownMs,
         zenHintCell,
+        currentChallenge,
+        isSharedChallenge,
 
         // Actions
         startGame,
+        startSeededChallenge,
         startBlitz,
         startRapid,
         startZen,

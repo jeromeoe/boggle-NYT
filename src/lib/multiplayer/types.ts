@@ -30,9 +30,6 @@ export interface MultiplayerPlayer {
 
 export interface SubmitPayload {
   room_id: string;
-  gross_score: number;
-  penalty_score: number;
-  net_score: number;
   words_found: string[];
   words_penalized: string[];
 }

@@ -69,38 +69,6 @@ export function findAllWords(board: string[][], trie: Trie): Set<string> {
             }
         }
 
-        // Special handling for "QU" die when treated as just "Q"
-        // This handles words that use Q without U
-        if (dieString === "QU") {
-            const char = "Q";
-            if (node.children.has(char)) {
-                const qNode = node.children.get(char)!;
-                const qPrefix = prefix + char;
-
-                if (qNode.isEndOfWord && qPrefix.length >= 3) {
-                    foundWords.add(qPrefix);
-                }
-
-                // Continue DFS from Q node
-                for (let dr = -1; dr <= 1; dr++) {
-                    for (let dc = -1; dc <= 1; dc++) {
-                        if (dr === 0 && dc === 0) continue;
-
-                        const nr = r + dr;
-                        const nc = c + dc;
-                        const neighborKey = `${nr},${nc}`;
-
-                        if (
-                            nr >= 0 && nr < rows &&
-                            nc >= 0 && nc < cols &&
-                            !newPath.has(neighborKey)
-                        ) {
-                            dfs(nr, nc, newPath, qNode, qPrefix);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // Start DFS from every position on the board

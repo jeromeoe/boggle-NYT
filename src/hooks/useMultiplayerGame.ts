@@ -64,12 +64,8 @@ export function useMultiplayerGame({ board, trie, isActive, roomId, onWordCountC
 
     // Called by useMultiplayerRoom when the timer hits zero
     const endGame = useCallback(() => {
-        const scores = calculateTotalScore(foundWordsRef.current, penalizedWordsRef.current);
         onGameEnd({
             room_id: roomId,
-            gross_score: scores.gross,
-            penalty_score: scores.penalty,
-            net_score: scores.net,
             words_found: foundWordsRef.current,
             words_penalized: penalizedWordsRef.current,
         });

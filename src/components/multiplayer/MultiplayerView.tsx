@@ -80,7 +80,7 @@ export function MultiplayerView({ user, onExit, onSignInClick, pendingJoinCode, 
 
     // When the room status becomes 'playing', generate the board from seed
     useEffect(() => {
-        if (phase === 'playing' && room?.board_seed && trie && dictionaryLoaded) {
+        if (phase === 'playing' && room?.board_seed != null && trie && dictionaryLoaded) {
             const newBoard = generateBoardWithSeed(room.board_seed);
             setBoard(newBoard);
         }
@@ -212,7 +212,13 @@ export function MultiplayerView({ user, onExit, onSignInClick, pendingJoinCode, 
                 <div className="text-sm font-mono text-[#8A9A90] uppercase tracking-wider">
                     Multiplayer · Room {room?.room_code}
                 </div>
-                <div className="text-sm font-semibold text-[#D4AF37]">{statusMessage}</div>
+                <div
+                    className={`text-sm font-semibold ${error ? 'text-red-300' : 'text-[#D4AF37]'}`}
+                    role="status"
+                    aria-live="polite"
+                >
+                    {error ?? (phase === 'waiting' ? 'Score verified · waiting for opponent' : statusMessage)}
+                </div>
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

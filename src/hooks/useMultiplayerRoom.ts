@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { MultiplayerRoom, MultiplayerPlayer, SubmitPayload, MultiplayerBroadcastEvent } from "@/lib/multiplayer/types";
 
-export type MultiplayerPhase = "idle" | "lobby" | "countdown" | "playing" | "results";
+export type MultiplayerPhase = "idle" | "lobby" | "countdown" | "playing" | "waiting" | "results";
 
 const GAME_DURATION = 180;
 
@@ -34,6 +34,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
     const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const finalizeTimerRef = useRef<NodeJS.Timeout | null>(null);
     const lobbyPollRef = useRef<NodeJS.Timeout | null>(null);
     const startTimeMsRef = useRef<number | null>(null);
     const lastBroadcastRef = useRef(0);
@@ -240,6 +241,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
         return () => {
             stopTimer();
             if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+            if (finalizeTimerRef.current) clearTimeout(finalizeTimerRef.current);
             if (lobbyPollRef.current) clearInterval(lobbyPollRef.current);
             if (channelRef.current) supabase.removeChannel(channelRef.current);
         };
@@ -354,6 +356,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
 
     const resetRoom = useCallback(async () => {
         if (!state.room) return;
+        if (finalizeTimerRef.current) { clearTimeout(finalizeTimerRef.current); finalizeTimerRef.current = null; }
         setState(s => ({ ...s, isLoading: true, error: null }));
 
         const res = await fetch('/api/multiplayer/reset', {
@@ -385,15 +388,61 @@ export function useMultiplayerRoom(myUserId: string | null) {
         if (currentRoomIdRef.current) startLobbyPoll(currentRoomIdRef.current);
     }, [state.room, startLobbyPoll]);
 
+    const showResults = useCallback(async (roomId: string) => {
+        const { data } = await supabase
+            .from('multiplayer_players')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('net_score', { ascending: false });
+        setState(s => ({
+            ...s,
+            phase: 'results',
+            players: data ?? s.players,
+            room: s.room ? { ...s.room, status: 'finished', finished_at: new Date().toISOString() } : s.room,
+        }));
+    }, []);
+
+    const finalizeRoom = useCallback(async (roomId: string) => {
+        const res = await fetch('/api/multiplayer/finalize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: roomId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 409 && typeof data.retryAfterMs === 'number') {
+            setError('Waiting for the multiplayer grace period to finish.');
+            return;
+        }
+        if (!res.ok) {
+            setError(data.error ?? 'Failed to finalize room');
+            return;
+        }
+        await showResults(roomId);
+    }, [showResults]);
+
     const submitResult = useCallback(async (payload: SubmitPayload) => {
         const res = await fetch('/api/multiplayer/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        if (!res.ok) console.error('Failed to submit result');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            setError(data.error ?? 'Failed to submit result');
+            return;
+        }
+        if (data.pending) {
+            setState(s => ({ ...s, phase: 'waiting', error: null }));
+            if (finalizeTimerRef.current) clearTimeout(finalizeTimerRef.current);
+            finalizeTimerRef.current = setTimeout(
+                () => void finalizeRoom(payload.room_id),
+                Math.max(250, (data.finalizeAfterMs ?? 0) + 100),
+            );
+        } else {
+            await showResults(payload.room_id);
+        }
         // Phase transitions to 'results' when postgres_changes fires room status='finished'
-    }, []);
+    }, [finalizeRoom, showResults]);
 
     const broadcastWordCount = useCallback((count: number) => {
         const now = Date.now();
@@ -408,6 +457,7 @@ export function useMultiplayerRoom(myUserId: string | null) {
 
     const leaveRoom = useCallback(() => {
         stopTimer();
+        if (finalizeTimerRef.current) { clearTimeout(finalizeTimerRef.current); finalizeTimerRef.current = null; }
         if (lobbyPollRef.current) { clearInterval(lobbyPollRef.current); lobbyPollRef.current = null; }
         currentRoomIdRef.current = null;
 
