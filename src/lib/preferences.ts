@@ -64,12 +64,11 @@ export function setPathfinderEnabled(enabled: boolean): void {
 
 /** ---------- Reduced motion ---------- */
 
-/** Default: ON. Only explicit "false" disables it. */
+/** Default: OFF. Only an explicit "true" enables the in-app override. */
 export function getReducedMotionEnabled(): boolean {
-    if (!isBrowser()) return true;
+    if (!isBrowser()) return false;
     const v = localStorage.getItem(PREF_KEYS.reducedMotion);
-    if (v === null) return true; // default on
-    return v !== "false";
+    return v === "true";
 }
 
 export function setReducedMotion(enabled: boolean): void {

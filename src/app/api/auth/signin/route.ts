@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { getSupabaseAdmin } from '@/lib/supabase/server-client';
-import { signToken, SESSION_COOKIE } from '@/lib/auth/jwt';
+import { isLocalTestUsername, signToken, SESSION_COOKIE } from '@/lib/auth/jwt';
 
 const schema = z.object({
     username: z.string().min(1).max(50),
@@ -17,6 +17,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { username, password } = parsed.data;
+
+    // The shared database may contain the local fixture, but it must never be
+    // usable through a deployed auth endpoint.
+    if (process.env.NODE_ENV === 'production' && isLocalTestUsername(username)) {
+        return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
+    }
 
     const supabaseAdmin = getSupabaseAdmin();
 

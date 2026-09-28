@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { signIn, signUp, saveUserSession, forgotPassword } from "@/lib/supabase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User } from "@/lib/supabase/client";
-import { TbEye, TbEyeOff, TbMailCheck } from "react-icons/tb";
+import { TbEye, TbEyeOff, TbMailCheck, TbX } from "react-icons/tb";
 import { Engraving } from "@/components/shared/Engraving";
 
 type AuthMode = "signin" | "signup" | "forgot" | "verify_pending";
@@ -47,6 +47,21 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
     useEffect(() => {
         setInfoMessage(initialInfoMessage);
     }, [initialInfoMessage]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", onKeyDown);
+        };
+    }, [isOpen, onClose]);
 
     const switchMode = (next: AuthMode) => {
         resetFields();
@@ -118,18 +133,18 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
         verify_pending: { heading: "Check Your Inbox", sub: "" },
     };
 
-    const inputClass = "w-full px-4 py-2.5 bg-white border border-[#E6E4DD] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A3C34] focus:border-transparent";
+    const inputClass = "w-full rounded-lg border border-cream-divider bg-parchment-raised px-4 py-2.5 text-soft-black placeholder:text-muted-stone focus:border-transparent focus:outline-none focus:ring-2 focus:ring-baize";
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-[#1A3C34]/60 backdrop-blur-sm"
-                        onClick={mode === "verify_pending" ? undefined : onClose}
+                        className="absolute inset-0 bg-baize-deep/75"
+                        onClick={onClose}
                     />
 
                     <motion.div
@@ -137,18 +152,30 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
                         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        className="relative bg-[#F9F7F1] w-full max-w-md rounded-xl shadow-2xl border border-[#E6E4DD] overflow-hidden"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="auth-dialog-title"
+                        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-y-auto rounded-[18px] border border-cream-divider bg-parchment-raised text-soft-black shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Gold top accent */}
                         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
 
                         {/* Header */}
-                        <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] text-[#F9F7F1] p-6 text-center">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label="Close account dialog"
+                            className="absolute right-3 top-3 z-10 rounded-[8px] border-none bg-white/10 p-2 text-cream-ink transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brass"
+                        >
+                            <TbX className="h-5 w-5" />
+                        </button>
+
+                        <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] p-6 text-center text-cream-ink">
                             <Engraving src="/marks/emblem.svg" className="mx-auto mb-3 h-16 w-16" style={{ color: "#D4AF37" }} />
-                            <h2 className="text-2xl font-serif font-bold">{TITLES[mode].heading}</h2>
+                            <h2 id="auth-dialog-title" className="font-serif text-2xl font-bold">{TITLES[mode].heading}</h2>
                             {TITLES[mode].sub && (
-                                <p className="text-sm text-[#8A9A90] mt-1">{TITLES[mode].sub}</p>
+                                <p className="mt-1 text-sm text-cream-ink/70">{TITLES[mode].sub}</p>
                             )}
                         </div>
 
@@ -161,11 +188,11 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-[#444] leading-relaxed">
+                                    <p className="text-sm leading-relaxed text-muted-ink">
                                         We sent a verification link to{" "}
                                         <strong className="text-[#1A3C34]">{pendingUser?.email ?? email}</strong>.
                                     </p>
-                                    <p className="text-sm text-[#666] mt-2 leading-relaxed">
+                                    <p className="mt-2 text-sm leading-relaxed text-muted-ink">
                                         Click the link to unlock <strong>Daily Stats</strong> — streaks, medals, and personal bests.
                                         You can still play without verifying.
                                     </p>
@@ -182,15 +209,16 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                 )}
                                 <div className="space-y-2 pt-2">
                                     <button
+                                        type="button"
                                         onClick={() => { if (pendingUser) { onAuthSuccess(pendingUser); onClose(); } }}
-                                        className="w-full py-3 bg-[#1A3C34] hover:bg-[#142E28] text-[#F9F7F1] font-semibold rounded-lg transition-all shadow-md"
+                                        className="w-full rounded-lg bg-baize py-3 font-semibold text-cream-ink shadow-md transition-all hover:brightness-110"
                                     >
                                         Continue to Game
                                     </button>
                                     <button
                                         onClick={handleResendVerification}
                                         disabled={resendCooldown}
-                                        className="w-full py-2.5 text-sm text-[#1A3C34] hover:underline disabled:opacity-40 disabled:no-underline transition-colors"
+                                        className="w-full py-2.5 text-sm text-ink-accent transition-colors hover:underline disabled:opacity-40 disabled:no-underline"
                                     >
                                         {resendCooldown ? "Email sent — check your inbox" : "Resend verification email"}
                                     </button>
@@ -233,7 +261,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                         <label className="block text-sm font-semibold text-[#1A3C34] mb-1.5">
                                             Password
                                             {mode === "signup" && (
-                                                <span className="text-xs text-[#8A8A8A] font-normal ml-2">Minimum 8 characters</span>
+                                                <span className="ml-2 text-xs font-normal text-muted-ink">Minimum 8 characters</span>
                                             )}
                                         </label>
                                         <div className="relative">
@@ -250,7 +278,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                             <button
                                                 type="button"
                                                 onClick={() => setShowPassword((v) => !v)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8A8A] hover:text-[#1A3C34] transition-colors"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-ink transition-colors hover:text-ink-accent"
                                                 tabIndex={-1}
                                                 aria-label={showPassword ? "Hide password" : "Show password"}
                                             >
@@ -271,7 +299,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                                 type={showConfirmPassword ? "text" : "password"}
                                                 value={confirmPassword}
                                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                                className={`${inputClass} pr-11 ${confirmPassword && confirmPassword !== password ? "border-red-400 focus:ring-red-400" : confirmPassword && confirmPassword === password ? "border-[#2D6A4F] focus:ring-[#2D6A4F]" : ""}`}
+                                                className={`${inputClass} pr-11 ${confirmPassword && confirmPassword !== password ? "border-red-400 focus:ring-red-400" : confirmPassword && confirmPassword === password ? "border-felt-green focus:ring-felt-green" : ""}`}
                                                 placeholder="Re-enter password"
                                                 required
                                                 autoComplete="new-password"
@@ -279,7 +307,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                             <button
                                                 type="button"
                                                 onClick={() => setShowConfirmPassword((v) => !v)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8A8A] hover:text-[#1A3C34] transition-colors"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-ink transition-colors hover:text-ink-accent"
                                                 tabIndex={-1}
                                                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                                             >
@@ -298,7 +326,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                         <div>
                                             <label className="block text-sm font-semibold text-[#1A3C34] mb-1.5">
                                                 Display Name{" "}
-                                                <span className="text-xs text-[#8A8A8A] font-normal">(optional)</span>
+                                                <span className="text-xs font-normal text-muted-ink">(optional)</span>
                                             </label>
                                             <input
                                                 type="text"
@@ -322,7 +350,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                                                 required
                                                 autoComplete="email"
                                             />
-                                            <p className="text-xs text-[#888] mt-1">
+                                            <p className="mt-1 text-xs text-muted-ink">
                                                 Required for password recovery and Daily Stats.
                                             </p>
                                         </div>

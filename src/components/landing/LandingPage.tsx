@@ -39,7 +39,7 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
     return () => clearInterval(t);
   }, []);
   const lit = WORD_PATHS[litIdx];
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const today = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Singapore", weekday: "long", month: "long", day: "numeric" });
 
   return (
     <div
@@ -50,29 +50,30 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
       }}
       className="relative overflow-hidden rounded-[18px] p-6 sm:p-7"
     >
-      <div style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0)", backgroundSize: "28px 28px" }} className="pointer-events-none absolute inset-0" />
+      <div aria-hidden="true" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0)", backgroundSize: "28px 28px" }} className="pointer-events-none absolute inset-0" />
 
       <div className="relative flex flex-col-reverse items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
-          <div style={{ fontFamily: "var(--font-geist-mono)", color: "#D4AF37" }} className="mb-[10px] text-[10px] uppercase tracking-[0.2em] opacity-85">
-            Daily Challenge · {today}
-          </div>
-          <div style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="mb-[6px] text-[26px] font-bold leading-[1.15] tracking-[-0.02em]">
+          <h2 style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="mb-[6px] text-[26px] font-bold leading-[1.15] tracking-[-0.02em]">
             {"Today's Moggle Board"}
-          </div>
+          </h2>
           <div style={{ color: "rgba(189,200,195,0.75)" }} className="mt-[5px] text-[13px]">
             Compete globally. Find the most words in 3 minutes.
           </div>
           <button
+            type="button"
             onClick={onPlay}
             style={{ background: "#D4AF37", boxShadow: "0 4px 14px -2px rgba(212,175,55,0.4)", fontFamily: "var(--font-geist-sans)" }}
             className="mt-5 flex items-center gap-2 whitespace-nowrap rounded-[12px] border-none px-[22px] py-[13px] text-[13.5px] font-bold text-baize-deep transition-all hover:-translate-y-px hover:brightness-110 active:scale-[0.97]"
           >
-            Play Daily Challenge
+            Create account to play
           </button>
+          <div style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(212,175,55,0.78)" }} className="mt-3 text-[10px] uppercase tracking-[0.16em]">
+            Daily challenge · {today}
+          </div>
         </div>
 
-        <div className="flex flex-shrink-0 flex-col items-end gap-[10px]">
+        <div aria-hidden="true" className="flex flex-shrink-0 flex-col items-end gap-[10px]">
           <div className="grid grid-cols-4 gap-[5px]">
             {BOARD.map((row, r) =>
               row.map((letter, c) => {
@@ -89,7 +90,7 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
                       boxShadow: isLit
                         ? "2px 2px 0 0 rgba(0,0,0,0.2), 0 0 8px rgba(212,175,55,0.2)"
                         : "2px 2px 0 0 rgba(0,0,0,0.2), inset 0 -2px 0 rgba(0,0,0,0.15)",
-                      transition: "all 200ms",
+                      transition: "background-color 200ms, border-color 200ms, box-shadow 200ms, color 200ms",
                     }}
                     className="flex items-center justify-center rounded-[7px] text-[17px] font-bold"
                   >
@@ -136,6 +137,7 @@ const LOCKED_MODES: LockedMode[] = [
 function QuickPlayCard({ mode, onPlay }: { mode: FreeMode; onPlay: () => void }) {
   return (
     <button
+      type="button"
       onClick={onPlay}
       style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}
       className="group flex items-center gap-4 rounded-[14px] border border-cream-divider bg-parchment-raised p-5 text-left transition-all duration-150 hover:-translate-y-[2px] hover:border-[rgba(26,60,52,0.25)] hover:shadow-[0_6px_22px_-6px_rgba(26,25,21,0.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-baize active:scale-[0.99]"
@@ -162,6 +164,7 @@ function QuickPlayCard({ mode, onPlay }: { mode: FreeMode; onPlay: () => void })
 function LockedModeRow({ mode, onSignUp }: { mode: LockedMode; onSignUp: () => void }) {
   return (
     <button
+      type="button"
       onClick={onSignUp}
       className="group flex w-full items-center gap-3 rounded-[12px] border border-cream-divider bg-parchment-raised/60 px-4 py-[11px] text-left transition-colors duration-150 hover:bg-parchment-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-baize"
     >
@@ -187,7 +190,7 @@ function LockedModeRow({ mode, onSignUp }: { mode: LockedMode; onSignUp: () => v
 }
 
 // ── Leaderboard strip (real data) ──
-const MEDALS = ["🥇", "🥈", "🥉"];
+const MEDALS = ["1", "2", "3"];
 
 function LeaderboardStrip() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -200,7 +203,7 @@ function LeaderboardStrip() {
     });
   }, []);
 
-  const dateLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const dateLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Singapore", month: "short", day: "numeric" });
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-cream-divider bg-parchment-raised" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
@@ -231,7 +234,7 @@ function LeaderboardStrip() {
           const color = AV_COLORS[i % AV_COLORS.length];
           return (
             <div key={r.user_id} className="flex items-center gap-3 border-b border-cream-divider px-[18px] py-[10px] transition-colors last:border-b-0 hover:bg-parchment">
-              <div style={{ fontFamily: "var(--font-geist-mono)" }} className="w-[22px] flex-shrink-0 text-center text-[11px] text-muted-ink">
+              <div aria-label={`Rank ${i + 1}`} style={{ fontFamily: "var(--font-geist-mono)" }} className={`w-[22px] flex-shrink-0 text-center text-[11px] font-bold ${i < 3 ? "text-brass" : "text-muted-ink"}`}>
                 {MEDALS[i] ?? `#${i + 1}`}
               </div>
               <div style={{ background: color }} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-cream-ink">
@@ -275,17 +278,18 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
     <>
       <AppShell user={null} onAuth={openAuth}>
         <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-4 py-6 sm:px-7 sm:py-7">
+          <h1 className="sr-only">Moggle.org — a composed daily word game</h1>
           <div className="rise-in" style={{ "--i": 0 } as React.CSSProperties}>
             <DailyHero onPlay={() => openAuth("signup")} />
           </div>
 
           <div className="rise-in" style={{ "--i": 1 } as React.CSSProperties}>
-            <div className="mb-3 flex items-baseline justify-between">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h3 style={{ fontFamily: "var(--font-fraunces)" }} className="text-[18px] font-semibold text-soft-black">
                 Quick Play
               </h3>
               <span style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] uppercase tracking-[0.12em] text-muted-ink">
-                Free to play
+                Free with an account
               </span>
             </div>
             <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2">
@@ -296,11 +300,12 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
           </div>
 
           <div className="rise-in" style={{ "--i": 2 } as React.CSSProperties}>
-            <div className="mb-3 flex items-baseline justify-between">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h3 style={{ fontFamily: "var(--font-fraunces)" }} className="text-[18px] font-semibold text-soft-black">
                 More ways to play
               </h3>
               <button
+                type="button"
                 onClick={() => openAuth("signup")}
                 style={{ fontFamily: "var(--font-geist-sans)" }}
                 className="border-none bg-transparent text-[12px] text-muted-ink transition-colors hover:text-ink-accent"

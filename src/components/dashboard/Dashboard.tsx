@@ -58,7 +58,7 @@ function avatarColor(str: string) {
   return AV_COLORS[h % AV_COLORS.length];
 }
 
-const MEDALS = ["🥇", "🥈", "🥉"];
+const MEDALS = ["1", "2", "3"];
 
 // ── Preview board helpers (client-side, never reveals real board) ──
 const COMMON = "AAABCDDEEEEEFFGGHIIIJKLLLMNNNOOOOPPRRRSSSTTTUUUVWXYZ";
@@ -249,18 +249,14 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
     return () => clearInterval(t);
   }, [loading, result?.played, previewTrails]);
 
-  const dateLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const dateLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Singapore", weekday: "long", month: "long", day: "numeric" });
 
   return (
     <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 60%, #162E20 100%)", border: "1px solid rgba(212,175,55,0.2)", boxShadow: "0 8px 32px -4px rgba(26,25,21,0.18)" }} className="relative rounded-[18px] p-7 overflow-hidden">
       <div style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.06) 1px, transparent 0)", backgroundSize: "28px 28px" }} className="absolute inset-0 pointer-events-none" />
 
-      <div className="relative flex items-start justify-between gap-6">
+      <div className="relative flex flex-col-reverse items-start gap-6 sm:flex-row sm:justify-between">
         <div className="flex-1 min-w-0 pt-[2px]">
-          <div style={{ fontFamily: "var(--font-geist-mono)", color: "#D4AF37" }} className="text-[10px] uppercase tracking-[0.2em] mb-3 opacity-80">
-            Daily Challenge · {dateLabel}
-          </div>
-
           {loading ? (
             <>
               <div style={{ background: "rgba(237,232,223,0.1)", borderRadius: 6 }} className="h-[28px] w-[200px] mb-2 animate-pulse" />
@@ -268,9 +264,9 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
             </>
           ) : result?.played ? (
             <>
-              <div style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="font-bold text-[26px] tracking-[-0.02em] leading-[1.15] mb-2">
+              <h1 style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="mb-2 font-bold text-[26px] leading-[1.15] tracking-[-0.02em]">
                 You played today
-              </div>
+              </h1>
               <div className="flex items-baseline gap-3 mt-3">
                 <div style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="font-bold text-[54px] leading-none tracking-[-0.04em]">
                   {result.score ?? 0}
@@ -289,9 +285,9 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
             </>
           ) : (
             <>
-              <div style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="font-bold text-[28px] tracking-[-0.02em] leading-[1.15] mb-2">
+              <h1 style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="mb-2 font-bold text-[28px] leading-[1.15] tracking-[-0.02em]">
                 {"Today's board is waiting"}
-              </div>
+              </h1>
               <div style={{ color: "rgba(189,200,195,0.7)" }} className="text-[13px]">
                 Compete globally. Find the most words in 3 minutes.
                 {result?.totalPlayers != null && result.totalPlayers > 0 && (
@@ -325,6 +321,11 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
                   Play Today&apos;s Board →
                 </button>
               )}
+            </div>
+          )}
+          {!loading && (
+            <div style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(212,175,55,0.78)" }} className="mt-3 text-[10px] uppercase tracking-[0.16em]">
+              Daily challenge · {dateLabel}
             </div>
           )}
         </div>
@@ -419,7 +420,7 @@ function QuickPlayCards({ onBlitz, onRapid, onDaily }: {
         <button
           key={m.label}
           onClick={m.onClick}
-          className="group flex flex-col gap-2 p-4 bg-white border border-[#E6E4DD] rounded-[14px] text-left hover:border-[#1A3C34] hover:shadow-[0_4px_16px_-4px_rgba(26,25,21,0.12)] transition-all active:scale-[0.98]"
+          className="group flex flex-col gap-2 rounded-[14px] border border-cream-divider bg-parchment-raised p-4 text-left transition-all hover:border-baize hover:shadow-[0_4px_16px_-4px_rgba(26,25,21,0.12)] active:scale-[0.98]"
           style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}
         >
           <div className="flex items-center justify-between">
@@ -431,8 +432,8 @@ function QuickPlayCards({ onBlitz, onRapid, onDaily }: {
             </span>
           </div>
           <div>
-            <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 700, color: "#1A1A1A" }}>{m.label}</div>
-            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#8A8A8A", marginTop: 1 }}>{m.sub}</div>
+            <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 700, color: "var(--soft-black)" }}>{m.label}</div>
+            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "var(--muted-ink)", marginTop: 1 }}>{m.sub}</div>
           </div>
         </button>
       ))}
@@ -452,10 +453,10 @@ function StatCards({ stats, rating, loading }: { stats: UserStats | null; rating
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {cards.map((c) => (
-        <div key={c.label} className="bg-white border border-[#E6E4DD] rounded-[12px] p-4" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
-          <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[9.5px] uppercase tracking-[0.15em] text-[#8A8A8A] mb-2">{c.label}</div>
-          <div style={{ fontFamily: "var(--font-fraunces)" }} className="font-bold text-[28px] text-[#1A3C34] leading-none tracking-[-0.02em]">{c.value}</div>
-          <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A] mt-1">{c.sub}</div>
+            <div key={c.label} className="rounded-[12px] border border-cream-divider bg-parchment-raised p-4" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
+          <div style={{ fontFamily: "var(--font-geist-mono)" }} className="mb-2 text-[9.5px] uppercase tracking-[0.15em] text-muted-ink">{c.label}</div>
+          <div style={{ fontFamily: "var(--font-fraunces)" }} className="font-bold text-[28px] leading-none tracking-[-0.02em] text-ink-accent">{c.value}</div>
+          <div style={{ fontFamily: "var(--font-geist-mono)" }} className="mt-1 text-[11px] text-muted-ink">{c.sub}</div>
         </div>
       ))}
     </div>
@@ -465,17 +466,17 @@ function StatCards({ stats, rating, loading }: { stats: UserStats | null; rating
 // ── Recent games ──
 function RecentGames({ games, loading }: { games: GameStatRow[]; loading: boolean }) {
   const modeBadge = (isDailyChallenge: boolean | null) => {
-    if (isDailyChallenge) return { label: "Daily", cls: "bg-[rgba(45,106,79,0.1)] text-[#2D6A4F]" };
-    return { label: "Play", cls: "bg-[rgba(26,60,52,0.08)] text-[#1A3C34]" };
+    if (isDailyChallenge) return { label: "Daily", cls: "bg-[rgba(45,106,79,0.1)] text-felt-green" };
+    return { label: "Play", cls: "bg-[rgba(26,60,52,0.08)] text-ink-accent" };
   };
 
-  if (loading) return <div className="text-[13px] text-[#8A8A8A] py-4" style={{ fontFamily: "var(--font-geist-mono)" }}>Loading...</div>;
+  if (loading) return <div className="py-4 text-[13px] text-muted-ink" style={{ fontFamily: "var(--font-geist-mono)" }}>Loading...</div>;
 
   if (games.length === 0) return (
     <div className="bg-white border border-[#E6E4DD] rounded-[14px] p-8 text-center flex flex-col items-center" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
       <Engraving src="/marks/games.svg" className="h-16 w-16 mb-3 text-ink-accent opacity-55" />
-      <p style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-semibold text-[#1A3C34] mb-1">No games yet</p>
-      <p className="text-[12px] text-[#8A8A8A]">Play your first game to see your history here.</p>
+      <p style={{ fontFamily: "var(--font-geist-sans)" }} className="mb-1 text-[13px] font-semibold text-ink-accent">No games yet</p>
+      <p className="text-[12px] text-muted-ink">Play your first game to see your history here.</p>
     </div>
   );
 
@@ -499,12 +500,12 @@ function RecentGames({ games, loading }: { games: GameStatRow[]; loading: boolea
             <span style={{ fontFamily: "var(--font-geist-mono)" }} className={`text-[9.5px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-[6px] whitespace-nowrap flex-shrink-0 ${badge.cls}`}>
               {badge.label}
             </span>
-            <div style={{ fontFamily: "var(--font-geist-mono)" }} className="font-bold text-[18px] text-[#1A3C34] min-w-[40px]">
+            <div style={{ fontFamily: "var(--font-geist-mono)" }} className="min-w-[40px] font-bold text-[18px] text-ink-accent">
               {g.net_score ?? 0}
             </div>
             <div className="flex-1 flex flex-col gap-[2px]">
-              <div style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[12.5px] font-medium text-[#1A1A1A]">{wordCount} words found</div>
-              <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A]">{ago} · {duration}</div>
+              <div style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[12.5px] font-medium text-soft-black">{wordCount} words found</div>
+              <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-muted-ink">{ago} · {duration}</div>
             </div>
             <svg className="w-3.5 h-3.5 text-[#C0C0C0] group-hover:text-[#1A3C34] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </Link>
@@ -521,17 +522,17 @@ function LeaderboardStrip({ entries, userId, loading }: { entries: LeaderboardEn
   return (
     <div className="bg-white border border-[#E6E4DD] rounded-[14px] overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(26,25,21,0.04)" }}>
       <div className="flex items-center justify-between px-[18px] py-[14px] border-b border-[#E6E4DD]">
-        <h4 style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-bold text-[#1A3C34]">{"Today's Leaderboard"}</h4>
-        <span style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A]">{dateLabel}</span>
+        <h4 style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-bold text-ink-accent">{"Today's Leaderboard"}</h4>
+        <span style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-muted-ink">{dateLabel}</span>
       </div>
 
       {loading ? (
-        <div style={{ fontFamily: "var(--font-geist-mono)" }} className="px-[18px] py-8 text-center text-[12px] text-[#8A8A8A]">Loading...</div>
+        <div style={{ fontFamily: "var(--font-geist-mono)" }} className="px-[18px] py-8 text-center text-[12px] text-muted-ink">Loading...</div>
       ) : entries.length === 0 ? (
         <div className="px-[18px] py-8 text-center flex flex-col items-center">
           <Engraving src="/marks/scores.svg" className="h-16 w-16 mb-3 text-ink-accent opacity-55" />
-          <p style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-semibold text-[#1A3C34] mb-1">No scores yet today</p>
-          <p className="text-[12px] text-[#8A8A8A]">Be the first to play!</p>
+          <p style={{ fontFamily: "var(--font-geist-sans)" }} className="mb-1 text-[13px] font-semibold text-ink-accent">No scores yet today</p>
+          <p className="text-[12px] text-muted-ink">Be the first to play!</p>
         </div>
       ) : (
         entries.map((r, i) => {
@@ -540,29 +541,29 @@ function LeaderboardStrip({ entries, userId, loading }: { entries: LeaderboardEn
           const color = avatarColor(r.user_id ?? String(i));
           return (
             <div key={r.user_id} className={`flex items-center gap-3 px-[18px] py-[10px] border-b border-[#E6E4DD] last:border-b-0 transition-colors ${isYou ? "bg-[rgba(212,175,55,0.12)]" : "hover:bg-[#F9F7F1]"}`}>
-              <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A] w-[22px] text-center flex-shrink-0">
+              <div aria-label={`Rank ${i + 1}`} style={{ fontFamily: "var(--font-geist-mono)" }} className={`w-[22px] flex-shrink-0 text-center text-[11px] font-bold ${i < 3 ? "text-brass" : "text-muted-ink"}`}>
                 {MEDALS[i] ?? `#${i + 1}`}
               </div>
               <div style={{ background: color }} className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 text-[#EDE8DF]">
                 {name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <div style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[13px] font-semibold text-[#1A1A1A] flex items-center gap-1">
+                <div style={{ fontFamily: "var(--font-geist-sans)" }} className="flex items-center gap-1 text-[13px] font-semibold text-soft-black">
                   {name}
                   {isYou && <span style={{ fontFamily: "var(--font-geist-mono)", color: "#D4AF37" }} className="text-[10px] font-bold">YOU</span>}
                 </div>
-                <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A]">@{r.username}</div>
+                <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-muted-ink">@{r.username}</div>
               </div>
               <div className="text-right">
-                <div style={{ fontFamily: "var(--font-geist-mono)" }} className="font-bold text-[14px] text-[#1A3C34]">{r.net_score}</div>
-                <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-[#8A8A8A]">{r.words_found}w</div>
+                <div style={{ fontFamily: "var(--font-geist-mono)" }} className="font-bold text-[14px] text-ink-accent">{r.net_score}</div>
+                <div style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] text-muted-ink">{r.words_found}w</div>
               </div>
             </div>
           );
         })
       )}
       <div className="px-[18px] py-3 text-center border-t border-[#E6E4DD] bg-[rgba(249,247,241,0.5)]">
-        <Link href="/leaderboard" style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[12px] font-semibold text-[#1A3C34] no-underline hover:underline">
+        <Link href="/leaderboard" style={{ fontFamily: "var(--font-geist-sans)" }} className="text-[12px] font-semibold text-ink-accent no-underline hover:underline">
           View full leaderboard →
         </Link>
       </div>
@@ -919,7 +920,7 @@ export function Dashboard({ user, initialActive = "daily", onPlayDaily, onStartG
 
   return (
     <>
-      <div className="min-h-full bg-[#F9F7F1]">
+      <div className="min-h-full bg-parchment text-soft-black">
             {showMail ? (
               <div style={{ height: "100%", overflow: "hidden" }}>
                 <MoggleMailView
@@ -949,16 +950,16 @@ export function Dashboard({ user, initialActive = "daily", onPlayDaily, onStartG
                   <div className="flex flex-col gap-6">
                     <div>
                       <div className="flex items-center gap-4 mb-3">
-                        <h3 style={{ fontFamily: "var(--font-fraunces)" }} className="text-[18px] font-semibold text-[#1A1A1A] flex-shrink-0">Recent Games</h3>
-                        <div className="flex-1 h-px bg-[#E6E4DD]" />
+                        <h3 style={{ fontFamily: "var(--font-fraunces)" }} className="flex-shrink-0 text-[18px] font-semibold text-soft-black">Recent Games</h3>
+                        <div className="h-px flex-1 bg-cream-divider" />
                       </div>
                       <RecentGames games={games} loading={gamesLoading} />
                     </div>
 
                     <div>
                       <div className="flex items-center gap-4 mb-3">
-                        <h3 style={{ fontFamily: "var(--font-fraunces)" }} className="text-[18px] font-semibold text-[#1A1A1A] flex-shrink-0">{"Today's Leaderboard"}</h3>
-                        <div className="flex-1 h-px bg-[#E6E4DD]" />
+                        <h3 style={{ fontFamily: "var(--font-fraunces)" }} className="flex-shrink-0 text-[18px] font-semibold text-soft-black">{"Today's Leaderboard"}</h3>
+                        <div className="h-px flex-1 bg-cream-divider" />
                       </div>
                       <LeaderboardStrip entries={leaderboard} userId={user.id} loading={lbLoading} />
                     </div>

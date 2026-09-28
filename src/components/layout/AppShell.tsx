@@ -148,7 +148,16 @@ export function AppShell({
   // desktop collapse (default open). One hamburger drives whichever applies.
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   // Always close the mobile drawer after navigating.
   useEffect(() => {
@@ -156,7 +165,7 @@ export function AppShell({
   }, [pathname]);
 
   const toggleSidebar = () => {
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+    if (!isMobile) {
       setDesktopCollapsed((v) => !v);
     } else {
       setMobileOpen((v) => !v);
@@ -184,8 +193,9 @@ export function AppShell({
       "dashboard");
   const multiplayerOpen = ["multiplayer", "live-mp", "friends-mp"].includes(activeId);
   const practiceOpen = ["practice", "zen", "puzzles"].includes(activeId);
+  const navigationHidden = isMobile ? !mobileOpen : desktopCollapsed;
   const frameTitle = title ?? ({
-    dashboard: "",
+    dashboard: "Home",
     singleplayer: "Singleplayer",
     blitz: "Blitz",
     rapid: "Rapid",
@@ -217,6 +227,9 @@ export function AppShell({
       />
 
       <aside
+        id="app-navigation"
+        aria-hidden={navigationHidden}
+        inert={navigationHidden || undefined}
         className={`fixed inset-y-0 left-0 z-50 flex w-[230px] flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-baize-deep transition-transform duration-200 ease-out md:static md:z-20 md:translate-x-0 md:transition-[width] ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${desktopCollapsed ? "md:w-0" : "md:w-[230px]"}`}
@@ -303,7 +316,9 @@ export function AppShell({
         <header className="flex h-[52px] flex-shrink-0 items-center gap-5 border-b border-white/[0.06] bg-baize-deep px-4 sm:px-5">
           <button
             onClick={toggleSidebar}
-            aria-label="Toggle navigation"
+            aria-controls="app-navigation"
+            aria-expanded={!navigationHidden}
+            aria-label={navigationHidden ? "Open navigation" : "Close navigation"}
             className="flex-shrink-0 cursor-pointer rounded-[6px] border-none bg-transparent p-1.5 text-[rgba(237,232,223,0.45)] transition-colors hover:bg-white/5 hover:text-[#EDE8DF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brass"
             title="Toggle navigation"
           >

@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { getSupabaseAdmin } from '@/lib/supabase/server-client';
-import { signToken, SESSION_COOKIE } from '@/lib/auth/jwt';
+import { isLocalTestUsername, signToken, SESSION_COOKIE } from '@/lib/auth/jwt';
 
 const schema = z.object({
     username: z
@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
     }
 
     const { username, password, email, displayName } = parsed.data;
+
+    if (process.env.NODE_ENV === 'production' && isLocalTestUsername(username)) {
+        return NextResponse.json({ error: 'That username is unavailable.' }, { status: 409 });
+    }
 
     const supabaseAdmin = getSupabaseAdmin();
 
