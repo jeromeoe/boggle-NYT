@@ -275,7 +275,7 @@ export function GameModeModal({
                                             onFocus={(e) => e.target.select()}
                                             maxLength={2}
                                             className={`
-                                                w-14 h-14 text-center text-xl font-serif font-bold uppercase
+                                                w-14 h-14 text-center text-xl game-letter uppercase
                                                 border-2 rounded-lg focus:outline-none transition-all
                                                 ${letter
                                                     ? "bg-[#1A3C34] border-[#1A3C34] text-[#F9F7F1]"

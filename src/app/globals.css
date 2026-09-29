@@ -190,6 +190,15 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
+/* Board letters need the heavier, playful book-serif character of the game.
+   Keep an explicit fallback so they never collapse to a thin UI sans face
+   while the display font is loading or unavailable. */
+.game-letter {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-synthesis: none;
+}
+
 /* -------------------------------------------------------------------------
    Dark mode surface overrides
    Translates hardcoded light-mode Tailwind arbitrary hex classes into the
