@@ -11,7 +11,7 @@ export function Timer({ timeLeft, gameActive, zenMode }: { timeLeft: number; gam
         <div
             role="timer"
             aria-label={`${zenMode ? 'Elapsed time' : 'Time remaining'}: ${timeLabel}`}
-            className={`flex items-center gap-3 font-mono text-4xl md:text-5xl font-bold tracking-tight
+            className={`flex items-center gap-3 font-mono text-5xl md:text-6xl font-bold tracking-tight
                 ${!zenMode && timeLeft <= 30 && gameActive ? 'text-[#9B2226]' : 'text-[#1A3C34]'}`}
         >
             {zenMode && <TbStopwatch className="h-8 w-8 md:h-9 md:w-9" aria-hidden="true" />}

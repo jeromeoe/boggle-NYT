@@ -54,7 +54,7 @@ function NavLink({
   badge?: string;
   notice?: number;
   inset?: boolean;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
   return (
     <Link
@@ -248,7 +248,19 @@ export function AppShell({
           <GroupLink href="/play" label="Singleplayer" icon={<TbPlayerPlay size={17} />} active={activeId === "singleplayer"} />
           <NavLink href="/play/blitz" label="Blitz" icon={<TbBolt size={17} />} active={activeId === "blitz"} badge="1 min" inset />
           <NavLink href="/play/rapid" label="Rapid" icon={<TbClock size={17} />} active={activeId === "rapid"} badge="3 min" inset />
-          <NavLink href="/play/daily" label="Daily Challenge" icon={<TbCalendar size={17} />} active={activeId === "daily"} inset />
+          <NavLink
+            href="/play/daily"
+            label="Daily Challenge"
+            icon={<TbCalendar size={17} />}
+            active={activeId === "daily"}
+            inset
+            onClick={user ? (event) => {
+              if (pathname === "/" || pathname.startsWith("/play")) {
+                event.preventDefault();
+                window.dispatchEvent(new CustomEvent("moggle:start-daily"));
+              }
+            } : undefined}
+          />
           <GroupLink href="/multiplayer/live" label="Multiplayer" icon={<TbUsers size={17} />} active={activeId === "multiplayer"} badge="Beta" />
           {multiplayerOpen && (
             <>

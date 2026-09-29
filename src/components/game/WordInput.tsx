@@ -28,7 +28,7 @@ export function WordInput({
     }, [gameActive, currInput, statusMessage]); // Keep focus after typing, submissions, and hints
 
     return (
-        <div className="w-full max-w-sm space-y-2">
+        <div className="w-full max-w-md space-y-2">
             <div className="relative group">
                 <input
                     ref={inputRef}

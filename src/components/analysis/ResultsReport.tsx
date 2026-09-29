@@ -58,7 +58,7 @@ export function ResultsReport({
                     >
                         {/* Header */}
                         <div className="bg-white p-8 text-center relative border-b-2 border-[#1A3C34]">
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#1A3C34] via-[#D4AF37] to-[#1A3C34]" />
+                            <div className="absolute top-0 left-0 w-full h-2 bg-[#D4AF37]" />
                             <h2 className="text-3xl md:text-4xl font-serif font-bold mb-2 tracking-tight text-[#1A3C34] mt-2">
                                 {wasCompleted ? "Board Complete" : wasManual ? "Session Ended" : "Time's Up"}
                             </h2>
@@ -67,19 +67,19 @@ export function ResultsReport({
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-                                <div className="bg-gradient-to-br from-[#1A3C34] to-[#0F2016] rounded-xl p-6 shadow-lg">
+                                <div className="bg-[#0F2016] rounded-xl p-6 shadow-lg">
                                     <div className="text-5xl font-bold font-serif text-white">{net}</div>
                                     <div className="text-xs uppercase tracking-widest text-[#8A9A90] mt-2">Net Score</div>
                                 </div>
-                                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 shadow-md border-2 border-green-200">
+                                <div className="bg-green-50 rounded-xl p-6 shadow-md border-2 border-green-200">
                                     <div className="text-4xl font-mono font-bold text-green-700">+{gross}</div>
                                     <div className="text-xs uppercase tracking-widest text-green-600 mt-2">Earned</div>
                                 </div>
-                                <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 shadow-md border-2 border-red-200">
+                                <div className="bg-red-50 rounded-xl p-6 shadow-md border-2 border-red-200">
                                     <div className="text-4xl font-mono font-bold text-red-700">-{Math.abs(penalty)}</div>
                                     <div className="text-xs uppercase tracking-widest text-red-600 mt-2">Penalty</div>
                                 </div>
-                                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-6 shadow-md border-2 border-amber-200">
+                                <div className="bg-amber-50 rounded-xl p-6 shadow-md border-2 border-amber-200">
                                     <div className="text-4xl font-mono font-bold text-amber-700">{(() => {
                                         // Calculate max possible score
                                         let maxScore = 0;

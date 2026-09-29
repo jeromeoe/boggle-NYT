@@ -29,7 +29,7 @@ export function DailyChallengeBanner({ onStartDaily, isActive, hasPlayed }: Dail
             className="bg-gradient-to-br from-[#1A3C34] via-[#1A3C34] to-[#2D5A4A] rounded-2xl p-6 md:p-8 shadow-2xl border-2 border-[#D4AF37]/30 mb-8 relative overflow-hidden"
         >
             {/* Decorative gold accent */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-[#D4AF37]" />
 
             {/* Subtle pattern overlay */}
             <div className="absolute inset-0 opacity-5">

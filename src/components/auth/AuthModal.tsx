@@ -159,7 +159,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = "signi
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Gold top accent */}
-                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
+                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#D4AF37]" />
 
                         {/* Header */}
                         <button

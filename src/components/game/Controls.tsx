@@ -12,7 +12,7 @@ interface ControlsProps {
 
 export function GameControls({ gameActive, onStart, onEnd, isLoading, onShare, shareStatus }: ControlsProps) {
     return (
-        <div className="flex flex-col gap-3 w-full max-w-sm">
+        <div className="flex w-full max-w-md flex-col gap-3">
             <button
                 onClick={gameActive ? onEnd : onStart}
                 disabled={isLoading}

@@ -53,7 +53,10 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
       <div aria-hidden="true" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0)", backgroundSize: "28px 28px" }} className="pointer-events-none absolute inset-0" />
 
       <div className="relative flex flex-col-reverse items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
+          <div style={{ fontFamily: "var(--font-geist-mono)", color: "#D4AF37" }} className="mb-[10px] text-[10px] uppercase tracking-[0.2em] opacity-85">
+            Daily Challenge · {today}
+          </div>
           <h2 style={{ fontFamily: "var(--font-fraunces)", color: "#EDE8DF" }} className="mb-[6px] text-[26px] font-bold leading-[1.15] tracking-[-0.02em]">
             {"Today's Moggle Board"}
           </h2>
@@ -66,15 +69,12 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
             style={{ background: "#D4AF37", boxShadow: "0 4px 14px -2px rgba(212,175,55,0.4)", fontFamily: "var(--font-geist-sans)" }}
             className="mt-5 flex items-center gap-2 whitespace-nowrap rounded-[12px] border-none px-[22px] py-[13px] text-[13.5px] font-bold text-baize-deep transition-all hover:-translate-y-px hover:brightness-110 active:scale-[0.97]"
           >
-            Create account to play
+            Play Daily Challenge
           </button>
-          <div style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(212,175,55,0.78)" }} className="mt-3 text-[10px] uppercase tracking-[0.16em]">
-            Daily challenge · {today}
-          </div>
         </div>
 
-        <div aria-hidden="true" className="flex flex-shrink-0 flex-col items-end gap-[10px]">
-          <div className="grid grid-cols-4 gap-[5px]">
+        <div aria-hidden="true" className="flex flex-shrink-0 flex-col items-end gap-[10px] rounded-[16px] border border-white/[0.12] bg-white/[0.07] p-3 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.35)]">
+          <div className="grid grid-cols-4 gap-[6px]">
             {BOARD.map((row, r) =>
               row.map((letter, c) => {
                 const isLit = lit.has(`${r},${c}`);
@@ -82,7 +82,7 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
                   <div
                     key={`${r},${c}`}
                     style={{
-                      width: 40, height: 40,
+                      width: 46, height: 46,
                       fontFamily: "var(--font-fraunces)",
                       background: isLit ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.08)",
                       border: isLit ? "1px solid rgba(212,175,55,0.5)" : "1px solid rgba(255,255,255,0.1)",
@@ -92,7 +92,7 @@ function DailyHero({ onPlay }: { onPlay: () => void }) {
                         : "2px 2px 0 0 rgba(0,0,0,0.2), inset 0 -2px 0 rgba(0,0,0,0.15)",
                       transition: "background-color 200ms, border-color 200ms, box-shadow 200ms, color 200ms",
                     }}
-                    className="flex items-center justify-center rounded-[7px] text-[17px] font-bold"
+                    className="flex items-center justify-center rounded-[8px] text-[18px] font-bold"
                   >
                     {letter}
                   </div>

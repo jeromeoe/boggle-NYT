@@ -77,6 +77,7 @@ export function useGameLogic() {
     const isDailyReplayRef = useRef(false);
     const dailyChallengeDateRef = useRef<string | null>(null);
     const hintReadyAtRef = useRef(0);
+    const zenHintCellsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => { foundWordsRef.current = foundWords; }, [foundWords]);
     useEffect(() => { penalizedWordsRef.current = penalizedWords; }, [penalizedWords]);
@@ -87,6 +88,7 @@ export function useGameLogic() {
     useEffect(() => {
         if (!gameActive || !isZenMode) {
             hintReadyAtRef.current = 0;
+            zenHintCellsRef.current.clear();
             setHintCooldownMs(0);
             setZenHintCell(null);
             return;
@@ -235,6 +237,10 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(false);
+        zenHintCellsRef.current.clear();
+        hintReadyAtRef.current = 0;
+        setHintCooldownMs(0);
+        setZenHintCell(null);
         setStatusMessage(`${possible.size} words available`);
         setIsGeneratingBoard(false);
     }, [trie]);
@@ -260,6 +266,7 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(challenge.mode === 'zen');
+        zenHintCellsRef.current.clear();
         setZenHintCell(null);
         hintReadyAtRef.current = 0;
         setHintCooldownMs(0);
@@ -287,6 +294,10 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(false);
+        zenHintCellsRef.current.clear();
+        hintReadyAtRef.current = 0;
+        setHintCooldownMs(0);
+        setZenHintCell(null);
         setStatusMessage(`Custom • ${possible.size} words available`);
         return true;
     }, [trie]);
@@ -341,19 +352,26 @@ export function useGameLogic() {
         }
 
         const hint = candidates
-            .map((word) => ({ trail: findCandidateTrail(word, board) }))
-            .find(({ trail }) => trail.activeCells.size > 0);
+            .map((word) => {
+                const trail = findCandidateTrail(word, board);
+                const nextCell = Array.from(trail.activeCells)
+                    .find((cell) => !zenHintCellsRef.current.has(cell));
 
-        if (!hint) {
+                return { trail, nextCell };
+            })
+            .find(({ nextCell }) => nextCell !== undefined);
+
+        if (!hint || !hint.nextCell) {
             setStatusMessage("No hint is available for this board.");
             return { status: "empty" };
         }
 
-        // Sets preserve the pathfinder's traversal order, so reveal only the
-        // starting tile of the shortest unfound word instead of the word itself.
-        const cell = hint.trail.activeCells.values().next().value as string;
+        // Sets preserve the pathfinder's traversal order. Remember every cell
+        // used by a hint so each ready cycle advances to a new tile.
+        const cell = hint.nextCell;
+        zenHintCellsRef.current.add(cell);
         setZenHintCell(cell);
-        setStatusMessage("Hint: a tile from a shortest unfound word is highlighted.");
+        setStatusMessage("Hint: the next tile in a shortest unfound word is highlighted.");
         hintReadyAtRef.current = Date.now() + ZEN_HINT_COOLDOWN_MS;
         setHintCooldownMs(ZEN_HINT_COOLDOWN_MS);
         return { status: "hint", cell };
@@ -362,8 +380,9 @@ export function useGameLogic() {
 
 
     const startDailyChallenge = useCallback(async () => {
-        if (!trie) return;
+        if (!trie) return false;
 
+        setIsGeneratingBoard(true);
         setStatusMessage("Loading daily challenge...");
         setIsDailyChallenge(true);
         setIsDailyReplay(false); // Reset initially
@@ -384,7 +403,8 @@ export function useGameLogic() {
                     } else {
                         setStatusMessage("Sign in to save your daily score.");
                         setIsDailyChallenge(false);
-                        return;
+                        setIsGeneratingBoard(false);
+                        return false;
                     }
                 } catch (e) {
                     console.error("Error checking daily status:", e);
@@ -409,11 +429,19 @@ export function useGameLogic() {
             setGameActive(true);
             setShowResults(false);
             setIsZenMode(false);
+            zenHintCellsRef.current.clear();
+            hintReadyAtRef.current = 0;
+            setHintCooldownMs(0);
+            setZenHintCell(null);
             setStatusMessage(`Daily Challenge • ${possible.size} words available`);
+            setIsGeneratingBoard(false);
+            return true;
         } catch (error) {
             console.error("Failed to load daily challenge:", error);
             setStatusMessage("Error loading daily challenge");
             setIsDailyChallenge(false);
+            setIsGeneratingBoard(false);
+            return false;
         }
     }, [trie]);
 
@@ -435,6 +463,10 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(false);
+        zenHintCellsRef.current.clear();
+        hintReadyAtRef.current = 0;
+        setHintCooldownMs(0);
+        setZenHintCell(null);
         setStatusMessage(`Blitz · ${possible.size} words`);
         setIsGeneratingBoard(false);
     }, [trie]);
@@ -457,6 +489,10 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(false);
+        zenHintCellsRef.current.clear();
+        hintReadyAtRef.current = 0;
+        setHintCooldownMs(0);
+        setZenHintCell(null);
         setStatusMessage(`Rapid · ${possible.size} words`);
         setIsGeneratingBoard(false);
     }, [trie]);
@@ -479,6 +515,7 @@ export function useGameLogic() {
         setIsDailyChallenge(false);
         setIsCustomBoardLoaded(false);
         setIsZenMode(true);
+        zenHintCellsRef.current.clear();
         setZenHintCell(null);
         hintReadyAtRef.current = 0;
         setHintCooldownMs(0);

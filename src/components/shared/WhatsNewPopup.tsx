@@ -78,7 +78,7 @@ export function WhatsNewPopup() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Gold accent bar */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4AF37] via-[#C5A028] to-[#D4AF37]" />
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-[#D4AF37]" />
 
                         {/* Close */}
                         <button
@@ -135,7 +135,7 @@ export function WhatsNewPopup() {
                                 onClick={dismiss}
                                 className="mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#1A3C34] hover:bg-[#142E28] text-[#F9F7F1] rounded-lg font-semibold text-sm transition-colors group"
                             >
-                                Oaky
+                                Okay
                                 <TbArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                             </button>
                         </div>

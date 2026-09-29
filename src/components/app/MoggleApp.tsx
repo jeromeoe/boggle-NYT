@@ -55,6 +55,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
     gameWasManual,
     gameWasCompleted,
     allPossibleWords,
+    isDailyChallenge,
     isDailyReplay,
     isGeneratingBoard,
     isZenMode,
@@ -96,6 +97,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
   const [pendingChallengeCode, setPendingChallengeCode] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState("");
   const initialViewHandledRef = useRef(false);
+  const dailyStartInFlightRef = useRef(false);
   const hintFillPercent = hintCooldownMs === 0 ? 100 : Math.max(0, Math.min(100, ((10000 - hintCooldownMs) / 10000) * 100));
   const hintReady = hintCooldownMs === 0;
 
@@ -126,21 +128,33 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
   }, []);
 
   const handleStartDailyChallenge = useCallback(async () => {
-    const authUser = await requireDailySession();
-    if (!authUser) return;
-    setShowingDashboard(false);
-    setActiveTab("play");
-    startDailyChallenge();
-  }, [requireDailySession, startDailyChallenge]);
+    if (dailyStartInFlightRef.current || (isDailyChallenge && gameActive)) return;
+    dailyStartInFlightRef.current = true;
 
-  const handleNavigateDaily = useCallback(async () => {
-    const authUser = await requireDailySession();
-    if (!authUser) {
-      router.push("/play/daily");
-      return;
+    try {
+      const authUser = await requireDailySession();
+      if (!authUser) return;
+
+      const started = await startDailyChallenge();
+      if (!started) return;
+
+      // Keep the current app tree mounted. Native history updates the URL and
+      // AppShell's active item without remounting MoggleApp into a blank state.
+      setActiveTab("play");
+      setShowingDashboard(false);
+      if (window.location.pathname !== "/play/daily") {
+        window.history.pushState({}, "", "/play/daily");
+      }
+    } finally {
+      dailyStartInFlightRef.current = false;
     }
-    router.push("/play/daily");
-  }, [requireDailySession, router]);
+  }, [gameActive, isDailyChallenge, requireDailySession, startDailyChallenge]);
+
+  useEffect(() => {
+    const onDailyNavigation = () => { void handleStartDailyChallenge(); };
+    window.addEventListener("moggle:start-daily", onDailyNavigation);
+    return () => window.removeEventListener("moggle:start-daily", onDailyNavigation);
+  }, [handleStartDailyChallenge]);
 
   // Load user session on mount
   useEffect(() => {
@@ -283,7 +297,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
           user={user}
           initialActive={initialView === "mail" ? "mail" : undefined}
           onPlayDaily={() => {
-            handleNavigateDaily();
+            void handleStartDailyChallenge();
           }}
           onStartGame={() => {
             router.push("/play");

@@ -255,8 +255,11 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
     <div style={{ background: "linear-gradient(135deg, #1A3C34 0%, #0F2016 60%, #162E20 100%)", border: "1px solid rgba(212,175,55,0.2)", boxShadow: "0 8px 32px -4px rgba(26,25,21,0.18)" }} className="relative rounded-[18px] p-7 overflow-hidden">
       <div style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.06) 1px, transparent 0)", backgroundSize: "28px 28px" }} className="absolute inset-0 pointer-events-none" />
 
-      <div className="relative flex flex-col-reverse items-start gap-6 sm:flex-row sm:justify-between">
+      <div className="relative flex flex-col-reverse items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1 min-w-0 pt-[2px]">
+          <div style={{ fontFamily: "var(--font-geist-mono)", color: "#D4AF37" }} className="mb-3 text-[10px] uppercase tracking-[0.2em] opacity-80">
+            Daily Challenge · {dateLabel}
+          </div>
           {loading ? (
             <>
               <div style={{ background: "rgba(237,232,223,0.1)", borderRadius: 6 }} className="h-[28px] w-[200px] mb-2 animate-pulse" />
@@ -321,11 +324,6 @@ function DailyHero({ userId, onPlayDaily, onStartGame }: {
                   Play Today&apos;s Board →
                 </button>
               )}
-            </div>
-          )}
-          {!loading && (
-            <div style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(212,175,55,0.78)" }} className="mt-3 text-[10px] uppercase tracking-[0.16em]">
-              Daily challenge · {dateLabel}
             </div>
           )}
         </div>

@@ -11,7 +11,7 @@ import type { Trie } from '@/lib/boggle/trie';
 export function PracticeMode() {
     const [trie, setTrie] = useState<Trie | null>(null);
     const [currentQuiz, setCurrentQuiz] = useState<PracticeQuiz | null>(null);
-    const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('medium');
+    const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed' | null>(null);
 
     // Load dictionary on mount
     useEffect(() => {
@@ -34,6 +34,7 @@ export function PracticeMode() {
 
     const handleBack = () => {
         setCurrentQuiz(null);
+        setSelectedDifficulty(null);
     };
 
     if (!trie) {

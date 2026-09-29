@@ -152,7 +152,7 @@ export function PracticeQuizComponent({ quiz, onNewQuiz, onBack }: PracticeQuizP
             {/* Progress Bar */}
             <div className="w-full h-2 bg-[#E6E4DD] rounded-full overflow-hidden">
                 <motion.div
-                    className="h-full bg-gradient-to-r from-[#1A3C34] to-[#D4AF37]"
+                    className="h-full bg-[#D4AF37]"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.3 }}
