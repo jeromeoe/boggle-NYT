@@ -16,6 +16,8 @@ interface ResultsReportProps {
     wasCompleted?: boolean;
     onShare?: () => void;
     shareStatus?: string;
+    persistenceNotice?: string;
+    onCreateAccount?: () => void;
 }
 
 export function ResultsReport({
@@ -30,6 +32,8 @@ export function ResultsReport({
     wasCompleted = false,
     onShare,
     shareStatus,
+    persistenceNotice,
+    onCreateAccount,
 }: ResultsReportProps) {
     if (!isOpen) return null;
 
@@ -91,6 +95,20 @@ export function ResultsReport({
                                     <div className="text-xs uppercase tracking-widest text-amber-600 mt-2">Max Points</div>
                                 </div>
                             </div>
+                            {persistenceNotice && (
+                                <div className="mx-auto mt-6 max-w-xl rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-4 py-3 text-left">
+                                    <p className="text-sm leading-6 text-[#1A3C34]">{persistenceNotice}</p>
+                                    {onCreateAccount && (
+                                        <button
+                                            type="button"
+                                            onClick={onCreateAccount}
+                                            className="mt-3 rounded-lg bg-[#1A3C34] px-4 py-2 text-sm font-semibold text-[#F9F7F1] transition-colors hover:bg-[#142E28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A3C34]"
+                                        >
+                                            Create free account
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Scrollable content */}

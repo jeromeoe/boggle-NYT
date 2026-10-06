@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { IconType } from "react-icons";
-import { TbBolt, TbPlayerPlay, TbLayoutGrid, TbMoon, TbPuzzle, TbLock, TbArrowRight } from "react-icons/tb";
+import { TbBolt, TbPlayerPlay, TbLayoutGrid, TbMoon, TbPuzzle, TbArrowRight } from "react-icons/tb";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { AppShell } from "@/components/layout/AppShell";
 import { Engraving } from "@/components/shared/Engraving";
@@ -114,11 +115,12 @@ interface FreeMode {
   tag: string;
   iconClass: string;
 }
-interface LockedMode {
+interface MoreMode {
   Icon: IconType;
   title: string;
   desc: string;
   tag: string;
+  href: string;
 }
 
 // The two instantly-playable modes get prominence. (Daily lives in the hero above.)
@@ -127,11 +129,10 @@ const FREE_MODES: FreeMode[] = [
   { Icon: TbPlayerPlay, title: "Rapid", desc: "Three minutes of focused, unhurried word hunting.", tag: "3 min", iconClass: "bg-[rgba(26,60,52,0.08)] text-ink-accent" },
 ];
 
-// Everything still behind sign-up is demoted to a compact list — not equal cards.
-const LOCKED_MODES: LockedMode[] = [
-  { Icon: TbLayoutGrid, title: "Microboards", desc: "Bite-sized 3×3 puzzles for quick practice.", tag: "Practice" },
-  { Icon: TbMoon, title: "Zen Mode", desc: "No timer, no pressure — play at your pace.", tag: "Practice" },
-  { Icon: TbPuzzle, title: "Puzzles", desc: "Find the one hidden word on each special board.", tag: "New" },
+const MORE_MODES: MoreMode[] = [
+  { Icon: TbLayoutGrid, title: "Microboards", desc: "Bite-sized 3×3 puzzles for quick practice.", tag: "Practice", href: "/practice" },
+  { Icon: TbMoon, title: "Zen Mode", desc: "No timer, no pressure — play at your pace.", tag: "Practice", href: "/play/zen" },
+  { Icon: TbPuzzle, title: "Puzzles", desc: "Find the one hidden word on each special board.", tag: "New", href: "/puzzles" },
 ];
 
 function QuickPlayCard({ mode, onPlay }: { mode: FreeMode; onPlay: () => void }) {
@@ -161,11 +162,11 @@ function QuickPlayCard({ mode, onPlay }: { mode: FreeMode; onPlay: () => void })
   );
 }
 
-function LockedModeRow({ mode, onSignUp }: { mode: LockedMode; onSignUp: () => void }) {
+function MoreModeRow({ mode, onPlay }: { mode: MoreMode; onPlay: () => void }) {
   return (
     <button
       type="button"
-      onClick={onSignUp}
+      onClick={onPlay}
       className="group flex w-full items-center gap-3 rounded-[12px] border border-cream-divider bg-parchment-raised/60 px-4 py-[11px] text-left transition-colors duration-150 hover:bg-parchment-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-baize"
     >
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[9px] bg-parchment-sunk text-muted-ink">
@@ -182,9 +183,7 @@ function LockedModeRow({ mode, onSignUp }: { mode: LockedMode; onSignUp: () => v
         </div>
         <p className="m-0 truncate text-[11.5px] text-muted-ink">{mode.desc}</p>
       </div>
-      <span style={{ fontFamily: "var(--font-geist-sans)" }} className="flex flex-shrink-0 items-center gap-[5px] text-[11px] font-medium text-muted-ink transition-colors group-hover:text-ink-accent">
-        <TbLock size={13} /> Sign up
-      </span>
+      <TbArrowRight size={16} className="flex-shrink-0 text-muted-stone transition-all duration-150 group-hover:translate-x-1 group-hover:text-ink-accent" />
     </button>
   );
 }
@@ -266,6 +265,7 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProps) {
+  const router = useRouter();
   const [showAuth, setShowAuth] = useState(Boolean(authMessage));
   const [authMode, setAuthMode] = useState<"signup" | "signin">(authMessage ? "signin" : "signup");
 
@@ -274,13 +274,15 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
     setShowAuth(true);
   };
 
+  const playRoute = (path: string) => router.push(path);
+
   return (
     <>
       <AppShell user={null} onAuth={openAuth}>
         <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-4 py-6 sm:px-7 sm:py-7">
           <h1 className="sr-only">Moggle.org — a composed daily word game</h1>
           <div className="rise-in" style={{ "--i": 0 } as React.CSSProperties}>
-            <DailyHero onPlay={() => openAuth("signup")} />
+            <DailyHero onPlay={() => playRoute("/play/daily")} />
           </div>
 
           <div className="rise-in" style={{ "--i": 1 } as React.CSSProperties}>
@@ -289,12 +291,12 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
                 Quick Play
               </h3>
               <span style={{ fontFamily: "var(--font-geist-mono)" }} className="text-[11px] uppercase tracking-[0.12em] text-muted-ink">
-                Free with an account
+                Play free. Save progress with an account.
               </span>
             </div>
             <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2">
               {FREE_MODES.map((mode) => (
-                <QuickPlayCard key={mode.title} mode={mode} onPlay={() => openAuth("signup")} />
+                <QuickPlayCard key={mode.title} mode={mode} onPlay={() => playRoute(mode.title === "Blitz" ? "/play/blitz" : "/play/rapid")} />
               ))}
             </div>
           </div>
@@ -310,12 +312,12 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
                 style={{ fontFamily: "var(--font-geist-sans)" }}
                 className="border-none bg-transparent text-[12px] text-muted-ink transition-colors hover:text-ink-accent"
               >
-                Sign up to unlock all →
+                Save your stats →
               </button>
             </div>
             <div className="flex flex-col gap-2">
-              {LOCKED_MODES.map((mode) => (
-                <LockedModeRow key={mode.title} mode={mode} onSignUp={() => openAuth("signup")} />
+              {MORE_MODES.map((mode) => (
+                <MoreModeRow key={mode.title} mode={mode} onPlay={() => playRoute(mode.href)} />
               ))}
             </div>
           </div>

@@ -138,7 +138,7 @@ export function useGameLogic() {
                 const { getAuthenticatedUser } = await import('@/lib/supabase/auth');
                 const user = await getAuthenticatedUser();
                 if (!user) {
-                    setStatusMessage("Sign in again to save your daily score.");
+                    setStatusMessage("Daily complete. Create an account next time to save your score and appear on the leaderboard.");
                     return;
                 }
 
@@ -400,11 +400,6 @@ export function useGameLogic() {
                         if (alreadyPlayed) {
                             console.log("Daily challenge already played today. Replay mode active (score will not be saved).");
                         }
-                    } else {
-                        setStatusMessage("Sign in to save your daily score.");
-                        setIsDailyChallenge(false);
-                        setIsGeneratingBoard(false);
-                        return false;
                     }
                 } catch (e) {
                     console.error("Error checking daily status:", e);

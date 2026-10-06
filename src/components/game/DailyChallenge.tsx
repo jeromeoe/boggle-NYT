@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { TbCalendar, TbSparkles } from "react-icons/tb";
 
@@ -8,19 +8,23 @@ interface DailyChallengeProps {
     onStartDaily: () => void;
     isActive: boolean;
     hasPlayed?: boolean;
+    isGuest?: boolean;
 }
 
-export function DailyChallengeBanner({ onStartDaily, isActive, hasPlayed }: DailyChallengeProps) {
-    const [dateStr, setDateStr] = useState<string>("");
+const subscribeToNothing = () => () => {};
 
-    useEffect(() => {
-        const today = new Date();
-        setDateStr(today.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric'
-        }));
-    }, []);
+function formatDailyDate() {
+    return new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+    });
+}
+
+export function DailyChallengeBanner({ onStartDaily, isActive, hasPlayed, isGuest = false }: DailyChallengeProps) {
+    // A stable server snapshot avoids a locale/timezone hydration mismatch while
+    // still showing the visitor's local date once the client hydrates.
+    const dateStr = useSyncExternalStore(subscribeToNothing, formatDailyDate, () => "");
 
     return (
         <motion.div
@@ -56,13 +60,15 @@ export function DailyChallengeBanner({ onStartDaily, isActive, hasPlayed }: Dail
                     </div>
 
                     <h3 className="text-2xl md:text-3xl font-serif font-bold text-[#F9F7F1] mb-2">
-                        Play Today's Daily
+                        Play Today&apos;s Daily
                     </h3>
 
                     <p className="text-[#B8C5BD] text-sm">
                         {hasPlayed
-                            ? "You've already played today's challenge. Replay for practice!"
-                            : "The curated board for the day. Compete globally!"}
+                            ? <>You&apos;ve already played today&apos;s challenge. Replay for practice!</>
+                            : isGuest
+                                ? "The curated board for the day. Create an account after playing to submit a ranked score."
+                                : "The curated board for the day. Compete globally!"}
                     </p>
                 </div>
 

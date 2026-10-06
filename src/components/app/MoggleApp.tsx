@@ -113,28 +113,11 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
     setShowModeModal(false);
   };
 
-  const requireDailySession = useCallback(async (): Promise<User | null> => {
-    const authUser = await getAuthenticatedUser();
-    if (authUser) {
-      setUser(authUser);
-      setAuthMessage("");
-      return authUser;
-    }
-
-    setUser(null);
-    setShowingDashboard(false);
-    setAuthMessage("Your session expired. Sign in again before playing Daily Challenge so your score is saved.");
-    return null;
-  }, []);
-
   const handleStartDailyChallenge = useCallback(async () => {
     if (dailyStartInFlightRef.current || (isDailyChallenge && gameActive)) return;
     dailyStartInFlightRef.current = true;
 
     try {
-      const authUser = await requireDailySession();
-      if (!authUser) return;
-
       const started = await startDailyChallenge();
       if (!started) return;
 
@@ -148,7 +131,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
     } finally {
       dailyStartInFlightRef.current = false;
     }
-  }, [gameActive, isDailyChallenge, requireDailySession, startDailyChallenge]);
+  }, [gameActive, isDailyChallenge, startDailyChallenge]);
 
   useEffect(() => {
     const onDailyNavigation = () => { void handleStartDailyChallenge(); };
@@ -175,7 +158,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
   }, [initialView]);
 
   useEffect(() => {
-    if (!dictionaryLoaded || (!user && !initialChallenge) || initialViewHandledRef.current) return;
+    if (!dictionaryLoaded || initialViewHandledRef.current) return;
     initialViewHandledRef.current = true;
 
     if (initialView === "dashboard" || initialView === "mail") return;
@@ -285,7 +268,8 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
     );
   }
 
-  if (!user && !initialChallenge) {
+  const guestNeedsAccountFeature = ["mail", "multiplayer", "live-mp", "friends-mp"].includes(initialView);
+  if ((!user && !initialChallenge && initialView === "dashboard") || (!user && guestNeedsAccountFeature)) {
     return <LandingPage authMessage={authMessage} onAuthSuccess={(u) => { setAuthMessage(""); setUser(u); setShowingDashboard(initialView === "dashboard" || initialView === "mail"); }} />;
   }
 
@@ -395,6 +379,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
                 onStartDaily={handleStartDailyChallenge}
                 isActive={gameActive}
                 hasPlayed={isDailyReplay}
+                isGuest={!user}
               />
             )}
 
@@ -558,6 +543,8 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
             wasCompleted={gameWasCompleted}
             onShare={currentChallenge ? handleShareBoard : undefined}
             shareStatus={shareStatus}
+            persistenceNotice={isDailyChallenge && !user ? "Create a free account to save future Daily scores, build streaks, and show your time on the leaderboard." : undefined}
+            onCreateAccount={isDailyChallenge && !user ? () => setShowAuthModal(true) : undefined}
           />
         )}
 
