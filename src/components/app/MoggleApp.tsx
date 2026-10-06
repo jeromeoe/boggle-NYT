@@ -259,7 +259,9 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
     }
   }, [gameActive, showResults, user]);
 
-  if (!dictionaryLoaded) {
+  const guestLanding = !user && !initialChallenge && initialView === "dashboard";
+
+  if (!dictionaryLoaded && !guestLanding) {
     return (
       <div className="min-h-screen bg-[#F9F7F1] text-[#1A1A1A] flex flex-col items-center justify-center font-serif">
         <div className="animate-pulse text-2xl tracking-widest mb-4">INITIALIZING ENGINE...</div>
@@ -269,7 +271,7 @@ export function MoggleApp({ initialView = "dashboard", initialChallenge = null }
   }
 
   const guestNeedsAccountFeature = ["mail", "multiplayer", "live-mp", "friends-mp"].includes(initialView);
-  if ((!user && !initialChallenge && initialView === "dashboard") || (!user && guestNeedsAccountFeature)) {
+  if (guestLanding || (!user && guestNeedsAccountFeature)) {
     return <LandingPage authMessage={authMessage} onAuthSuccess={(u) => { setAuthMessage(""); setUser(u); setShowingDashboard(initialView === "dashboard" || initialView === "mail"); }} />;
   }
 

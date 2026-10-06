@@ -1,5 +1,12 @@
 import { MoggleApp } from "@/components/app/MoggleApp";
 import { parseSeededChallenge } from "@/lib/boggle/share";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Play a Free Word-Grid Game",
+  description: "Start a free word-grid round in your browser. Choose an open, closed, random, or custom board.",
+  alternates: { canonical: "/play" },
+};
 
 interface Props {
   searchParams: Promise<{ challenge?: string | string[] }>;

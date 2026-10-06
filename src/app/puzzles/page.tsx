@@ -1,4 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Word Puzzles",
+  description: "Explore new word-grid puzzles from Moggle.org.",
+  alternates: { canonical: "/puzzles" },
+  robots: { index: false, follow: true },
+};
 
 export default function PuzzlesPage() {
   return (

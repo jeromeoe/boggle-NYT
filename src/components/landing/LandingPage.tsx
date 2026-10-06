@@ -280,7 +280,17 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
     <>
       <AppShell user={null} onAuth={openAuth}>
         <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-4 py-6 sm:px-7 sm:py-7">
-          <h1 className="sr-only">Moggle.org — a composed daily word game</h1>
+          <header className="max-w-2xl">
+            <p style={{ fontFamily: "var(--font-geist-mono)" }} className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-ink">
+              Free online word game
+            </p>
+            <h1 style={{ fontFamily: "var(--font-fraunces)" }} className="text-[28px] font-bold leading-tight tracking-[-0.025em] text-ink-accent sm:text-[34px]">
+              Find words. Beat the clock. Return tomorrow.
+            </h1>
+            <p className="mt-2 text-[14px] leading-6 text-muted-ink">
+              Moggle is a quick, free letter-grid game with a fresh Daily Challenge, timed rounds, and relaxed practice modes. No account is needed to play.
+            </p>
+          </header>
           <div className="rise-in" style={{ "--i": 0 } as React.CSSProperties}>
             <DailyHero onPlay={() => playRoute("/play/daily")} />
           </div>
@@ -330,6 +340,17 @@ export function LandingPage({ onAuthSuccess, authMessage = "" }: LandingPageProp
             </div>
             <LeaderboardStrip />
           </div>
+
+          <section className="rise-in rounded-[14px] border border-cream-divider bg-parchment-raised p-5 sm:p-6" style={{ "--i": 4 } as React.CSSProperties} aria-labelledby="how-to-play-heading">
+            <h2 id="how-to-play-heading" style={{ fontFamily: "var(--font-fraunces)" }} className="text-[20px] font-semibold text-soft-black">
+              How to play
+            </h2>
+            <div className="mt-3 grid gap-4 text-[13px] leading-6 text-muted-ink sm:grid-cols-3">
+              <p><strong className="text-ink-accent">Choose a board.</strong> Start today&apos;s shared Daily Challenge or pick a timed or relaxed mode.</p>
+              <p><strong className="text-ink-accent">Make words.</strong> Connect neighboring letters to submit words of three letters or more.</p>
+              <p><strong className="text-ink-accent">Keep improving.</strong> Create a free account when you want saved Daily stats, streaks, and leaderboard results.</p>
+            </div>
+          </section>
         </div>
       </AppShell>
 
