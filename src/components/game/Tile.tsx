@@ -25,9 +25,13 @@ export function Tile({ letter, onClick, disabled, isActive, isHinted }: TileProp
             onClick={onClick}
             disabled={disabled}
             aria-label={`${letter === "QU" ? "Qu" : letter}${isHinted ? ", hint tile" : ""}`}
+            style={{
+                fontSize: "clamp(2rem, 2.75vw, 2.5rem)",
+                lineHeight: 1,
+            }}
             className={`
-        w-16 h-16 md:w-20 md:h-20
-        game-letter text-4xl md:text-5xl leading-none
+        w-16 h-16 md:w-[4.5rem] md:h-[4.5rem]
+        game-letter leading-none
         rounded-lg
         shadow-[2px_2px_0px_0px_rgba(26,60,52,0.1),inset_0_-2px_0_rgba(0,0,0,0.05)]
         border

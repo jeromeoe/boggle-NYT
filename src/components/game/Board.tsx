@@ -91,7 +91,7 @@ export function Board({ board, onTileClick, disabled, candidateTrail, hintCell }
                                 <div
                                     key={key}
                                     data-tile-key={key}
-                                    className="w-16 h-16 md:w-20 md:h-20"
+                                    className="w-16 h-16 md:w-[4.5rem] md:h-[4.5rem]"
                                     style={{ position: "relative", zIndex: 1 }}
                                 >
                                     <Tile
@@ -109,7 +109,7 @@ export function Board({ board, onTileClick, disabled, candidateTrail, hintCell }
                     Array.from({ length: 16 }).map((_, i) => (
                         <div
                             key={i}
-                            className="w-16 h-16 md:w-20 md:h-20 bg-[#F0EEE6] border border-[#E6E4DD] rounded-lg flex items-center justify-center text-4xl md:text-5xl leading-none game-letter"
+                            className="w-16 h-16 md:w-[4.5rem] md:h-[4.5rem] bg-[#F0EEE6] border border-[#E6E4DD] rounded-lg flex items-center justify-center text-3xl md:text-4xl leading-none game-letter"
                         >
                             ?
                         </div>
