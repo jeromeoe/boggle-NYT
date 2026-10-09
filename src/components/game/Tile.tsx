@@ -26,7 +26,7 @@ export function Tile({ letter, onClick, disabled, isActive, isHinted }: TileProp
             disabled={disabled}
             aria-label={`${letter === "QU" ? "Qu" : letter}${isHinted ? ", hint tile" : ""}`}
             style={{
-                fontSize: "clamp(2rem, 2.75vw, 2.5rem)",
+                fontSize: "clamp(1.5625rem, 2.25vw, 2.125rem)",
                 lineHeight: 1,
             }}
             className={`
